@@ -112,28 +112,15 @@ export const PatientsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           
           if (event === 'SIGNED_IN' && session?.user) {
             console.log('[PatientsContext] User signed in, fetching patients');
-            // Clear patients first to ensure clean state
             setPatients([]);
             setLoading(true);
-            // Longer delay to ensure auth is fully established and context is ready
-            setTimeout(() => {
-              if (isMounted) {
-                console.log('[PatientsContext] Delayed fetch after sign in');
-                fetchPatients();
-              }
-            }, 500);
+            await fetchPatients();
           } else if (event === 'SIGNED_OUT') {
             console.log('[PatientsContext] User signed out, clearing patients');
             setPatients([]);
             setLoading(false);
-          } else if (event === 'TOKEN_REFRESHED') {
-            console.log('[PatientsContext] Token refreshed, checking if we need to refetch patients');
-            // Only refetch if we don't have patients and user is authenticated
-            if (isMounted && patients.length === 0 && session?.user) {
-              console.log('[PatientsContext] Refetching patients after token refresh');
-              fetchPatients();
-            }
           }
+          // Removed TOKEN_REFRESHED handler to prevent unnecessary re-fetching
         });
         
         console.log('[PatientsContext] Auth listener set up successfully');
@@ -172,15 +159,12 @@ export const PatientsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (currentRegion !== lastRegion) {
         console.log('[PatientsContext] Region changed:', lastRegion, '→', currentRegion);
         lastRegion = currentRegion;
-        setPatients([]);
-        setLoading(true);
-        // Only fetch if user is authenticated
+        // Only refetch if user is authenticated and we have patients
         const supabase = await getSupabaseClient();
         const { data: { user } } = await supabase.auth.getUser();
-        if (user && isMounted) {
+        if (user && isMounted && patients.length > 0) {
+          setLoading(true);
           await fetchPatients();
-        } else if (isMounted) {
-          setLoading(false);
         }
       }
     };
@@ -191,36 +175,9 @@ export const PatientsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       isMounted = false;
       if (interval) clearInterval(interval);
     };
-  }, [fetchPatients, authChecked]);
+  }, [fetchPatients, authChecked, patients.length]);
 
-  // Fallback mechanism: if we're authenticated but have no patients after a delay, try to fetch again
-  useEffect(() => {
-    if (!authChecked || patients.length > 0) return;
-    
-    let timeout: NodeJS.Timeout;
-    let isMounted = true;
-    
-    const fallbackFetch = async () => {
-      if (!isMounted) return;
-      
-      console.log('[PatientsContext] Fallback: checking if we should fetch patients');
-      const supabase = await getSupabaseClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user && isMounted && patients.length === 0 && !loading) {
-        console.log('[PatientsContext] Fallback: user authenticated but no patients, fetching...');
-        await fetchPatients();
-      }
-    };
-    
-    // Wait 2 seconds after auth is checked, then try to fetch if we still have no patients
-    timeout = setTimeout(fallbackFetch, 2000);
-    
-    return () => {
-      isMounted = false;
-      if (timeout) clearTimeout(timeout);
-    };
-  }, [authChecked, patients.length, loading, fetchPatients]);
+  // Removed fallback mechanism to prevent infinite loops when user has no patients
 
   const addPatient = (patient: PatientSummary) => {
     setPatients((prev) => [patient, ...prev]);

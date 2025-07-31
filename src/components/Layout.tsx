@@ -62,37 +62,23 @@ export default function Layout({ children, title, loading }: LayoutProps) {
 
   useEffect(() => {
     let timeout: NodeJS.Timeout;
-    let interval: NodeJS.Timeout;
     
     console.log('[Layout] Sidebar loading state:', { patientsLoading, patientsLength: patients.length, sidebarReady });
     
-    // Show skeleton if still loading OR if we have no patients yet but loading is complete
-    if (patientsLoading || (!patientsLoading && patients.length === 0 && !sidebarReady)) {
+    // Show skeleton if still loading
+    if (patientsLoading) {
       console.log('[Layout] Showing skeleton loading');
       setSidebarReady(false);
-      const start = Date.now();
-      interval = setInterval(() => {
-        // Stop showing skeleton if we have patients OR if loading is complete and we've waited long enough
-        if (patients.length > 0 || (!patientsLoading && Date.now() - start > 400)) {
-          console.log('[Layout] Stopping skeleton, patients:', patients.length, 'loading:', patientsLoading);
-          setSidebarReady(true);
-          clearInterval(interval);
-        }
-      }, 100);
-      timeout = setTimeout(() => {
-        console.log('[Layout] Skeleton timeout reached');
-        setSidebarReady(true);
-        clearInterval(interval);
-      }, 400);
     } else {
-      console.log('[Layout] Setting sidebar ready immediately');
+      // When loading is complete, show sidebar immediately
+      console.log('[Layout] Loading complete, showing sidebar');
       setSidebarReady(true);
     }
+    
     return () => {
-      clearInterval(interval);
-      clearTimeout(timeout);
+      if (timeout) clearTimeout(timeout);
     };
-  }, [patientsLoading, patients.length, sidebarReady]);
+  }, [patientsLoading]);
 
   const handleSignOut = async () => {
     if (signoutInProgress) return;
