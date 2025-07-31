@@ -1,0 +1,14 @@
+[[headers]]
+for = "*"
+key = "Access-Control-Allow-Origin"
+value = "*"
+
+[[headers]]
+for = "OPTIONS"
+key = "Access-Control-Allow-Methods"
+value = "POST, OPTIONS"
+
+[[headers]]
+for = "OPTIONS"
+key = "Access-Control-Allow-Headers"
+value = "Authorization, X-Client-Info, apikey, Content-Type, stripe-signature"

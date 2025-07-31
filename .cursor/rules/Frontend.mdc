@@ -1,0 +1,105 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+FRONTEND ARCHITECTURE
+
+Overview
+
+The frontend is a React application (web) and a React Native application (mobile) sharing common component, hook, and utility libraries where possible.
+
+It communicates with Supabase via REST and real-time subscriptions.
+
+AI interactions (transcription, summarization) are handled via secure API calls to serverless functions or directly to OpenAI endpoints.
+
+Technology & Libraries
+
+React (web) with Create React App or Next.js for routing
+
+React Native (mobile) with Expo managed workflow
+
+TypeScript for type safety
+
+Tailwind CSS for styling and layout
+
+Lucide React for icons
+
+date-fns and date-fns-tz for timezone-aware date handling
+
+React Query for data fetching, caching, and mutations
+
+Context API for global state (auth, user preferences, onboarding, splash)
+
+Directory Structure
+
+java
+Copy
+Edit
+src/
+  components/           shared UI components (cards, buttons, modals)
+  contexts/             React Context providers (Auth, Onboarding, Splash, Session)
+  hooks/                custom hooks (useAuth, useSupabase, useSessionTimeout)
+  pages/                top-level route components (Dashboard, PatientDetails, Settings)
+  services/             API wrappers (supabaseClient, aiClient)
+  utils/                helpers (timeUtils, getEmoji, moodUtils)
+  styles/               Tailwind config, custom CSS classes
+  navigation/           React Router setup (web) or React Navigation setup (mobile)
+  assets/               static media references and placeholders
+Authentication & Multi-Tenancy
+
+Supabase Auth manages login via email/password, Google, Microsoft.
+
+user_id and organisation_id stored in JWT claims for multi-tenant scoping.
+
+RLS policies enforced on all tables; frontend attaches JWT to every request.
+
+Data Fetching & Caching
+
+Use React Query to fetch lists (patients, diary entries, documents, mood entries) and handle loading, error, and refetch.
+
+Mutations for create/update/delete operations always invalidate relevant queries.
+
+Real-time Supabase subscriptions for live updates (e.g., new diary entries).
+
+Component Patterns
+
+“Smart” page components under pages/ orchestrate data loading and state.
+
+“Dumb” presentational components under components/ accept props only.
+
+Modals and drawers in components/modals/ with clearly defined open/close APIs.
+
+Styling & Layout
+
+All pages wrapped in <MainLayout> applying max-w-4xl mx-auto p-6 and background.
+
+Cards use bg-white shadow-sm rounded-xl p-4 mb-6.
+
+Buttons follow primary and secondary variants.
+
+Animation classes (animate-fade-down, transition-colors) applied consistently.
+
+Date & Time Handling
+
+Import and use getCurrentZonedDate, formatInTimeZone, isSameZonedDay from utils/timeUtils.
+
+All date displays use default format MMM dd, yyyy.
+
+Default values in date inputs derived from getCurrentZonedDate(user.timezone).
+
+AI Integration
+
+File and audio uploads trigger transcribe/summarize pipelines via functions in services/aiClient.ts.
+
+Summary results stored in Supabase and displayed via <InsightCard> components.
+
+Error handling surface AI errors to users with retry options.
+
+Navigation & Routing
+
+Web: React Router with protected routes (<PrivateRoute>).
+
+Mobile: React Navigation stack and tab navigators.
+
+Onboarding and FirstTimeSplash handled via context flag and conditional routing.

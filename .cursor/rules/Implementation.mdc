@@ -1,0 +1,118 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+IMPLEMENTATION FLOW
+
+User Authentication
+
+User signs up/in via Supabase Auth (email/password, Google, Microsoft).
+
+On signup, users record created with default preferences and onboard_complete=false, show_splash=true.
+
+Onboarding Wizard
+
+Wrapped in OnboardingProvider context.
+
+Step 1: Collect account details and T&C → update context.
+
+Step 2: Add care profiles → onboarding.profiles.
+
+Step 3: Configure settings (timezone, time format, session timeout) → onboarding.settings.
+
+Step 4: Placeholder media confirmation.
+
+On “Finish”: batch write to Supabase
+• supabase.auth.signUp() (if first time)
+• Update users with profile and settings
+• Insert each profile into patients table
+• Set onboard_complete=true, show_splash=true
+
+Show 3 s loader, then route to Dashboard.
+
+First-Time Splash
+
+On app load, SplashProvider checks users.show_splash.
+
+If true, display FirstTimeSplash with 5 tutorial pages.
+
+On close, update users.show_splash=false, route to Dashboard.
+
+Dashboard
+
+Fetch list of profiles via patients table.
+
+Render profile cards with “Log Mood” and “Add Entry” buttons.
+
+Clicking profile navigates to Patient Details.
+
+Patient Details Page
+
+Wrap in SessionModalProvider and useSessionTimeout hook.
+
+Tabs: Profile, Diary, Documents, Contacts, Medication, Symptoms, Mood, Export.
+
+Each tab fetches its data via React Query from Supabase.
+
+AI Insights row at top displays action buttons (Summarize, Suggest Questions, etc.).
+
+Health Analytics grid below shows trend cards.
+
+Data Entry Flows
+
+Recording: upload audio to audio-recordings, trigger transcription function, store in diary_entries.
+
+Document upload: upload to documents bucket, trigger AI analysis function, store results.
+
+Diary entry: modal → insert into diary_entries and optionally documents.
+
+Symptom/Medication/Mood: modals → insert into respective tables.
+
+All mutations invalidate related React Query caches.
+
+AI Pipelines
+
+On new audio or document, edge function calls Whisper or GPT, writes transcript_text, summary_text, ai_suggestions.
+
+UI subscribes to real-time updates or polls until results appear.
+
+Session Management
+
+On login, store sessionStart and sessionLength.
+
+useSessionTimeout hook sets warning modal and auto-logout.
+
+Users can renew session via modal or through Settings.
+
+Data Export
+
+User triggers export in Export tab.
+
+Edge function collects related tables by profile_id, formats PDF or JSON, stores in exports bucket, returns download link.
+
+Settings & Profile Updates
+
+Settings page reads and writes users fields (timezone, format, session timeout).
+
+Profile edits update patients table.
+
+Profile photo uploads to patient-photos bucket, updates patients.photo_url.
+
+Error Handling & Validation
+
+Inline form validation on all inputs.
+
+Toast notifications for success or failure.
+
+Global error boundary around routes to catch unexpected exceptions.
+
+Logout & Cleanup
+
+Manual logout via Settings clears auth.
+
+On auto-logout, supabase.auth.signOut() and redirect to login.
+
+Local storage cleared of session and onboarding data.
+
+This flow ensures a cohesive user journey from signup through daily use, leveraging contexts, React Query, Supabase services, and AI integrations in a step-by-step, maintainable manner.

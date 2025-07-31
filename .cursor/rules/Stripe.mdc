@@ -1,0 +1,286 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+This guide defines a reusable, region-aware Stripe integration architecture leveraging Supabase Functions and robust webhook handling to manage subscription plans and statuses across multiple regional Supabase instances and streamline troubleshooting.
+
+1. Environment & Secret Management
+
+Store API Keys in Environment Variables
+
+Keep your Stripe secret keys (STRIPE_SECRET_KEY) and Supabase service role keys in your .env, never in source control.  These secrets exists to support the function:
+SUPABASE_SERVICE_ROLE_KEY exists
+PRICE_ID_SINGLE
+PRICE_ID_FAMILY
+STRIPE_SECRET_KEY
+SUPABASE_URL
+
+Prefix Supabase URLs per region:
+
+VITE_SUPABASE_AU_URL=…
+VITE_SUPABASE_UK_URL=…
+VITE_SUPABASE_USA_URL=…
+
+Supabase Stripe Extension (Optional)
+
+For advanced use cases, the Supabase Stripe Foreign Data Wrapper (FDW) can mirror Stripe data into Postgres.
+
+2. Checkout Flow
+
+Client-Side Invocation
+
+On “Subscribe” click, call a Supabase Function (/functions/checkout) passing planId, and userId.
+
+Dynamic Pricing Lookup
+
+Within the function, select priceId from your region-specific secrets based on planId (e.g., PRICE_ID_**_SIGNLE, PRICE_ID_FAMILY).  The code should be re-usable with the secrets being changed in each environment.
+
+Initiate Stripe Checkout
+
+Use the Stripe SDK to create a Checkout Session:
+
+const session = await stripe.checkout.sessions.create({
+  mode: 'subscription',
+  payment_method_types: ['card'],
+  line_items: [{ price: priceId, quantity: 1 }],
+  success_url: `${frontEndUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
+  cancel_url: `${frontEndUrl}/cancel`
+});
+
+3. Supabase Function Implementation
+
+Reusable Function Template
+
+Write a single function that reads region and loads the correct Supabase client via process.env['VITE_SUPABASE_'+region+'_URL'].
+
+Idempotency & Error Handling
+
+Use Stripe idempotency keys (idempotency_key) in API calls to prevent duplicate subscriptions.
+
+4. Webhook Handling & Database Updates
+
+Secure Webhook Endpoint
+
+In your Supabase Function /functions/webhook-handler, verify signatures with your endpoint secret (WEBHOOK_SECRET) before processing.
+
+Immediately respond with HTTP 2xx to avoid retries.
+
+Process Relevant Events
+
+Listen for the following events:
+
+checkout.session.completed
+
+customer.subscription.created
+
+customer.subscription.deleted
+
+customer.subscription.paused
+
+customer.subscription.pending_update_applied
+
+customer.subscription.pending_update_expired
+
+customer.subscription.resumed
+
+customer.subscription.trial_will_end
+
+customer.subscription.updated
+
+invoice.marked_uncollectible
+
+invoice.paid
+
+invoice.payment_action_required
+
+invoice.payment_failed
+
+invoice.payment_succeeded
+
+payment_intent.canceled
+
+payment_intent.payment_failed
+
+Regional Webhook Routing
+
+Configure separate webhook endpoints per region (e.g., /au/webhook, /uk/webhook) with distinct secrets.
+
+5. Front-end Region Detection
+
+Determine User Region
+
+Use getCurrentRegion() from src/lib/supabaseClient.ts or fallback to localStorage.getItem('mikare_selected_region').
+
+API Base URL Selection
+
+Map region codes (AU, UK, USA) to environment URLs at runtime:
+
+const supabaseUrl = import.meta.env[`VITE_SUPABASE_${region}_URL`];
+
+6. Database Schema & Mapping
+
+Profiles Table
+
+subscription_plan (free|single|family), subscription_status (active|inactive).
+
+Stripe Tables
+
+Maintain stripe_customers, stripe_subscriptions, and stripe_orders to reconcile with Stripe’s state.
+
+7. Testing & Troubleshooting
+
+Local Testing
+
+Use the Stripe CLI to simulate events.
+
+Logging & Alerts
+
+Log webhook events and function errors to your observability platform (e.g., Sentry, Datadog).
+
+Common Pitfalls
+
+Ensure your function returns quickly (under 5s) to avoid timeouts.
+
+Validate idempotency to prevent duplicate database writes.
+
+By following these rules—secure environment setup, a unified checkout function, rigorous webhook processing, region-aware front-end logic, and disciplined testing—you’ll achieve a scalable, maintainable subscription system across multiple regions.
+
+
+User Journey
+
+Login & Region Detection
+
+The user signs in to your app; on successful login the front end captures their selected region (e.g. “AUD”, “GBP” or “USD”) via getCurrentRegion()/localStorage.
+
+Viewing Subscription Options
+
+On the Dashboard/Settings page they see their current subscription (“free”, “Single”, or “Family”) and two expandable plan options.
+
+Starting Checkout
+
+The user clicks “Subscribe” on the plan they want.
+
+The React component calls handleSubscription(planKey), which:
+
+Grabs user.id and email from Supabase auth.
+
+Detects region.
+
+Invokes your checkout Edge Function server-side via supabase.functions.invoke('checkout', { priceId, userId, userEmail, plan, region })—bypassing browser CORS.
+
+Creating the Stripe Checkout Session
+
+The checkout function:
+
+Reads STRIPE_API_KEY and Supabase secrets.
+
+Looks up (or creates) a Stripe Customer for userId in stripe_customers.
+
+Calls stripe.checkout.sessions.create({ … }) with:
+
+priceId (from your .env per region & plan),
+
+client_reference_id = userId,
+
+metadata = { user_id, plan, region },
+
+allow_promotion_codes: true,
+
+Success/cancel URLs pointing back to your app.
+
+Returns { url } back to the front end.
+
+User Completes Payment
+
+The browser navigates to session.url (Stripe’s hosted checkout).
+
+After payment, Stripe redirects the user to:
+
+pgsql
+Copy
+Edit
+https://login.mikare.health/subscription-success?session_id={CHECKOUT_SESSION_ID}
+Your SubscriptionSuccess page fetches that session ID if needed (to display a “Thank you” or pull finer details).
+
+Stripe→Webhook→Database
+
+Stripe emits events (customer.subscription.*, invoice.paid, etc.) to your stripe-webhook Edge Function.
+
+The webhook function:
+
+Reads the raw body + stripe-signature header.
+
+Uses constructEventAsync + createSubtleCryptoProvider() to verify the signature.
+
+Extracts user_id, plan & region from event.data.object.metadata.
+
+(Region filter) If EVENT.metadata.region !== Deno.env.get('REGION'), it ACKs and exits—only the matching Supabase project updates.
+
+Ensures a row in stripe_subscriptions (upsert).
+
+Inserts into stripe_orders on paid invoices.
+
+Updates profiles.subscription_plan → one of:
+
+MiKare Health - Individual plan
+
+MiKare Health - Family plan
+
+or on cancellation/failure, MiKare Health - free plan
+and sets profiles.subscription_status to active/inactive.
+
+Success Page & Feature Unlock
+
+When the user lands on /subscription-success, your front end can re-fetch the profiles row to confirm subscription_plan and subscription_status.
+
+With subscription_plan !== 'MiKare Health - free plan' and subscription_status === 'active', the app unlocks premium features.
+
+Self-Service via Customer Portal
+
+On the Account page you expose a “Manage Subscription” button.
+
+Clicking it invokes your portal Edge Function, which:
+
+Authenticates the user via Supabase auth token.
+
+Retrieves their Stripe customer_id.
+
+Calls stripe.billingPortal.sessions.create({ customer, return_url }).
+
+Returns the portal URL.
+
+The user is redirected into Stripe’s Customer Portal to change/cancel their plan, then returned to your app.
+
+System Overview
+
+Layer	Responsibility
+Front End	• Detect region on login.
+• Show current plan & options.
+• Call Edge Functions via supabase.functions.invoke('checkout') & invoke('portal').
+• Render success/cancel pages and feature-gates based on profiles.
+Supabase Edge	1) checkout: create Stripe customer & checkout session, return URL.
+2) stripe-webhook: verify Stripe events, region-filter, upsert stripe_subscriptions & stripe_orders, update profiles.
+3) portal: create billing-portal session.
+Stripe	• Hosts Checkout & Customer Portal flows.
+• Sends events to your webhook endpoint.
+Database Tables	• profiles—tracks subscription_plan & subscription_status.
+• stripe_customers—maps auth.users.id ↔ stripe.customer.id.
+• stripe_subscriptions—stores live subscription data.
+• stripe_orders—records paid invoice details.
+Secrets & Config	• STRIPE_API_KEY & STRIPE_WEBHOOK_SECRET for Stripe.
+• SUPABASE_URL & SUPABASE_SERVICE_ROLE_KEY per region.
+• FRONTEND_URL for redirect links.
+• REGION env var on each project to filter webhooks.
+
+This end-to-end flow ensures your users can subscribe, have their payment recorded and their feature-access updated automatically, and self-manage their plan—all with region-aware routing and secure, signature-verified webhooks.
+
+Stripe Price id's
+PRICE_ID_AUD_SINGLE=price_1RfGwUIcYBw9qtDg5n5spsNN
+PRICE_ID_AUD_FAMILY=price_1RfGxLIcYBw9qtDgjdnjkiz5
+PRICE_ID_GBP_SINGLE=price_1RfTR6IcYBw9qtDguFq9aIGj
+PRICE_ID_GBP_FAMILY=price_1RfTPxIcYBw9qtDg9KtxV4pu
+PRICE_ID_USD_SINGLE=price_1RfTQmIcYBw9qtDgutRGhDSj
+PRICE_ID_USD_FAMILY=price_1RfTQLIcYBw9qtDgenphStas
+
+these are stored in their relevant regions as 'PRICE_ID_SINGLE' and 'PRICE_ID_FAMILY'
