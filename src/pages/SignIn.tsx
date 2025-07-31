@@ -719,7 +719,7 @@ export default function SignIn() {
                       </Link>
                     </div>
                     <div className="text-xs text-center mt-2 text-gray-400">
-                      version 1.2.20
+                      version 1.2.21
                     </div>
                   </div>
                 </div>
