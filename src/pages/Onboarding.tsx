@@ -4,6 +4,7 @@ import { OnboardingProvider } from '../contexts/OnboardingContext';
 import OnboardingModal from '../components/onboarding/OnboardingModal';
 import { supabase } from '../lib/supabase';
 import { getSupabaseClient } from '../lib/supabaseClient';
+import { error as logError } from '../utils/logger';
 import { User, Camera, AlertCircle } from 'lucide-react';
 import { MIKARE_HEART_LOGO } from '../config/branding';
 
@@ -111,7 +112,7 @@ export default function Onboarding() {
       // Redirect to dashboard
       navigate('/dashboard');
     } catch (err) {
-      console.error('Error completing onboarding:', err);
+      logError('Error completing onboarding:', err);
       setError((err as Error).message);
     } finally {
       setLoading(false);

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getSupabaseClient } from '../lib/supabaseClient';
+import { error as logError } from '../utils/logger';
 import { X, AlertCircle, Lock } from 'lucide-react';
 import type { DiaryEntry } from '../types/database';
 import { useSubscription } from '../hooks/useSubscription';
@@ -66,7 +67,7 @@ export default function NoteModal({ isOpen, onClose, patientId, note, onSuccess,
       onSuccess();
       onClose();
     } catch (err) {
-      console.error('Error saving note:', err);
+      logError('Error saving note:', err);
       setError((err as Error).message);
     } finally {
       setLoading(false);

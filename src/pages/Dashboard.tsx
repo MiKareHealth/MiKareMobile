@@ -24,6 +24,7 @@ import { usePatientOverview } from '../hooks/usePatientOverview';
 import DiaryEntryModal from '../components/DiaryEntryModal';
 import SymptomModal from '../components/SymptomModal';
 import { MdOutlineSick } from 'react-icons/md';
+import { log, error as logError } from '../utils/logger';
 
 interface Profile {
   username: string;
@@ -235,15 +236,17 @@ export default function Dashboard() {
           
           // Note: Patients are already being loaded by PatientsContext
           // No need to manually trigger refreshPatients() here
-          console.log('[Dashboard] User authenticated, patients loading handled by context');
+          log('[Dashboard] User authenticated, patients loading handled by context');
         }
       } catch (error) {
-        console.error('[Dashboard] Error fetching user data:', error);
+        logError('[Dashboard] Error fetching user data:', error);
       }
     };
     
     fetchUserData();
   }, []); // Removed refreshPatients dependency
+
+
 
   const handleMoodEntry = (patientId: string) => {
     setSelectedPatientId(patientId);

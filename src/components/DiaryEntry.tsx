@@ -5,6 +5,7 @@ import { getSupabaseClient } from '../lib/supabaseClient';
 import { tokens } from '../styles/tokens';
 import { transcribeAudio } from '../lib/audioTranscription';
 import { useUserPreferences } from '../contexts/UserPreferencesContext';
+import { error as logError } from '../utils/logger';
 
 interface DiaryEntryProps {
   isOpen: boolean;
@@ -161,7 +162,7 @@ export default function DiaryEntry({ isOpen, onClose, patientId, onSuccess }: Di
       mediaRecorder.start();
       setIsRecording(true);
     } catch (err) {
-      console.error('Error starting recording:', err);
+      logError('Error starting recording:', err);
       setError(`Could not start recording: ${(err as Error).message}`);
     }
   };
@@ -187,7 +188,7 @@ export default function DiaryEntry({ isOpen, onClose, patientId, onSuccess }: Di
       const transcript = await transcribeAudio(audioBlob);
       setNotes(prev => prev ? `${prev}\n\n${transcript}` : transcript);
     } catch (err) {
-      console.error('Transcription error:', err);
+      logError('Transcription error:', err);
       setTranscriptionError(`Transcription error: ${(err as Error).message}`);
     } finally {
       setTranscribing(false);
@@ -208,7 +209,7 @@ export default function DiaryEntry({ isOpen, onClose, patientId, onSuccess }: Di
       
       onDelete();
     } catch (err) {
-      console.error('Error deleting diary entry:', err);
+      logError('Error deleting diary entry:', err);
     }
   };
 

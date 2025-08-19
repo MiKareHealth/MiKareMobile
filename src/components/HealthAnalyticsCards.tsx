@@ -7,6 +7,7 @@ import { useUserPreferences } from '../contexts/UserPreferencesContext';
 import { theme } from '../styles/tokens';
 import SubscriptionFeatureBlock from './SubscriptionFeatureBlock';
 import { getSupabaseClient } from '../lib/supabaseClient';
+import { error as logError } from '../utils/logger';
 
 interface HealthAnalyticsCardsProps {
   patientId: string;
@@ -50,7 +51,7 @@ export default function HealthAnalyticsCards({
           .single();
         
         if (error) {
-          console.error('Error fetching subscription status:', error);
+          logError('Error fetching subscription status:', error);
           return;
         }
         
@@ -61,7 +62,7 @@ export default function HealthAnalyticsCards({
         
         setIsFreePlan(isFreePlan);
       } catch (error) {
-        console.error('Error checking subscription:', error);
+        logError('Error checking subscription:', error);
       }
     };
     

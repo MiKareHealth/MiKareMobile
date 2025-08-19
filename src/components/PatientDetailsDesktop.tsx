@@ -25,6 +25,7 @@ import AIAnalysisButtons from './AIAnalysisButtons';
 import ReportMenu from './ReportMenu';
 import EditPatientModal from './EditPatientModal';
 import { GenerateReport } from './PDFExport';
+import DetailedReportModal from './DetailedReportModal';
 import { useUserPreferences } from '../contexts/UserPreferencesContext';
 import { tokens, theme } from '../styles/tokens';
 import { themeClasses } from '../styles/themeUtils';
@@ -285,7 +286,10 @@ export default function PatientDetailsDesktop({
                     max={dateRangeEnd || undefined}
                   />
                   {!dateRangeStart && (
-                    <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                    <div 
+                      className="absolute inset-0 flex items-center px-3 cursor-pointer"
+                      onClick={() => (document.getElementById('diary-start-date') as HTMLInputElement)?.showPicker()}
+                    >
                       <span className="text-sm font-medium text-text-secondary">Start date</span>
                     </div>
                   )}
@@ -300,7 +304,10 @@ export default function PatientDetailsDesktop({
                     min={dateRangeStart || undefined}
                   />
                   {!dateRangeEnd && (
-                    <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                    <div 
+                      className="absolute inset-0 flex items-center px-3 cursor-pointer"
+                      onClick={() => (document.getElementById('diary-end-date') as HTMLInputElement)?.showPicker()}
+                    >
                       <span className="text-sm font-medium text-text-secondary">End date</span>
                     </div>
                   )}
@@ -631,7 +638,10 @@ export default function PatientDetailsDesktop({
                     max={dateRangeEnd || undefined}
                   />
                   {!dateRangeStart && (
-                    <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                    <div 
+                      className="absolute inset-0 flex items-center px-3 cursor-pointer"
+                      onClick={() => (document.getElementById('notes-start-date') as HTMLInputElement)?.showPicker()}
+                    >
                       <span className="text-sm font-medium text-text-secondary">Start date</span>
                     </div>
                   )}
@@ -646,7 +656,10 @@ export default function PatientDetailsDesktop({
                     min={dateRangeStart || undefined}
                   />
                   {!dateRangeEnd && (
-                    <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                    <div 
+                      className="absolute inset-0 flex items-center px-3 cursor-pointer"
+                      onClick={() => (document.getElementById('notes-end-date') as HTMLInputElement)?.showPicker()}
+                    >
                       <span className="text-sm font-medium text-text-secondary">End date</span>
                     </div>
                   )}
@@ -1098,13 +1111,12 @@ export default function PatientDetailsDesktop({
               </div>
 
               <div className="flex-1 overflow-y-auto">
-                <GenerateReport
+                <DetailedReportModal
                   patient={patient}
                   diaryEntries={diaryEntries}
                   symptoms={symptoms}
                   medications={medications}
                   moodEntries={moodEntries}
-                  type="detailed"
                   onClose={() => setShowDetailsModal(false)}
                 />
               </div>

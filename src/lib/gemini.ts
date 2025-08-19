@@ -1,6 +1,7 @@
 import { getSupabaseClient } from './supabaseClient';
 import { getCurrentRegion } from './regionDetection';
 import { supabaseRegions } from '../config/supabaseRegions';
+import { log, error as logError } from '../utils/logger';
 
 interface GeminiResponse {
   text: string;
@@ -20,7 +21,7 @@ export async function queryGemini(prompt: string, context?: string): Promise<str
       throw new Error('No valid authentication session found');
     }
 
-    console.log('Querying Gemini API...');
+    log('Querying Gemini API...');
     
     // Basic rate limiting - if too many AI requests are made in quick succession
     const now = Date.now();
@@ -59,11 +60,11 @@ export async function queryGemini(prompt: string, context?: string): Promise<str
       throw new Error('No text response received from Gemini API');
     }
 
-    console.log('Gemini API response received successfully');
+    log('Gemini API response received successfully');
     
     return data.text;
   } catch (error: any) {
-    console.error('Detailed Gemini query error:', {
+    logError('Detailed Gemini query error:', {
       error: error.message,
       prompt,
       contextLength: context?.length,

@@ -1,3 +1,6 @@
+import { format, formatInTimeZone, zonedTimeToUtc, utcToZonedTime } from 'date-fns-tz';
+import { error as logError } from '../utils/logger';
+
 /**
  * Utility functions for date formatting and timezone handling
  */
@@ -22,7 +25,7 @@ export function formatDate(date: string | Date, timezone = 'UTC', format: '12h' 
     
     return new Date(date).toLocaleDateString(undefined, options);
   } catch (error) {
-    console.error('Error formatting date:', error);
+    logError('Error formatting date:', error);
     return new Date(date).toLocaleDateString();
   }
 }
@@ -50,7 +53,7 @@ export function formatDateTime(date: string | Date, timezone = 'UTC', format: '1
     
     return new Date(date).toLocaleString(undefined, options);
   } catch (error) {
-    console.error('Error formatting datetime:', error);
+    logError('Error formatting datetime:', error);
     return new Date(date).toLocaleString();
   }
 }
@@ -76,7 +79,7 @@ export function getCurrentDateInTimezone(timezone = 'UTC'): string {
     
     return `${year}-${month}-${day}`;
   } catch (error) {
-    console.error('Error getting current date in timezone:', error);
+    logError('Error getting current date in timezone:', error);
     return new Date().toISOString().split('T')[0];
   }
 }

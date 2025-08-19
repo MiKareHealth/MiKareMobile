@@ -1,9 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { getSupabaseClient, getCurrentRegion, initializeSupabase, setGlobalSupabaseInstance } from './lib/supabaseClient';
-import { log, error } from './utils/logger';
+import { log, error as logError } from './utils/logger';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import Onboarding from './pages/Onboarding';
@@ -42,7 +41,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
         const { data, error: sessionError } = await client.auth.getSession();
         
         if (sessionError) {
-          error("Error getting session:", sessionError);
+          logError("Error getting session:", sessionError);
           setUser(null);
           setLoading(false);
           return;
@@ -62,7 +61,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
             let sessionLength = 30; // Default
             
             if (profileError) {
-              console.error('Error fetching profile for session length:', profileError);
+              logError('Error fetching profile for session length:', profileError);
               
               // If no profile exists, try to create one
               if (profileError.code === 'PGRST116') {
@@ -78,10 +77,10 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
                     });
                   
                   if (insertError) {
-                    console.error('Error creating profile:', insertError);
+                    logError('Error creating profile:', insertError);
                   }
                 } catch (createError) {
-                  console.error('Error creating profile:', createError);
+                  logError('Error creating profile:', createError);
                 }
               }
             } else if (profileData) {
@@ -105,7 +104,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
           
           setLoading(false);
         } catch (err) {
-          error("Unexpected error during initialization:", err);
+          logError("Unexpected error during initialization:", err);
           setUser(null);
           setLoading(false);
         }
@@ -134,7 +133,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
             log('Last login timestamp updated');
           })
           .catch((err: any) => {
-            error('Failed to update last login timestamp (non-blocking):', err);
+            logError('Failed to update last login timestamp (non-blocking):', err);
           });
           
         // Set session start time
@@ -150,7 +149,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
             let sessionLength = 30; // Default
             
             if (error) {
-              console.error('Error fetching profile data:', error);
+              logError('Error fetching profile data:', error);
               
               // If no profile exists, try to create one
               if (error.code === 'PGRST116') {
@@ -165,11 +164,11 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
                   })
                   .then(({ error: insertError }: any) => {
                     if (insertError) {
-                      console.error('Error creating profile:', insertError);
+                      logError('Error creating profile:', insertError);
                     }
                   })
                   .catch((createError: any) => {
-                    console.error('Error creating profile:', createError);
+                    logError('Error creating profile:', createError);
                   });
               }
             } else if (data) {
@@ -344,7 +343,7 @@ function App() {
         setRegionInitialized(true);
         setPendingInit(false);
       } catch (err) {
-        console.error("Failed to initialize region system:", err);
+        logError("Failed to initialize region system:", err);
         setInitError((err as Error).message);
         // Continue anyway with fallback to allow manual region selection
         didFinish = true;

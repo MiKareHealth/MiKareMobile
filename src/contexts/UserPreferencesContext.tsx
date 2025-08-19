@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { User } from '@supabase/supabase-js';
 import { getSupabaseClient } from '../lib/supabaseClient';
 import { formatDate as formatDateUtil, formatDateTime as formatDateTimeUtil } from '../utils/timeUtils';
+import { error as logError } from '../utils/logger';
 
 interface UserPreferences {
   timezone: string;
@@ -50,7 +52,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
           .eq('id', user.id)
           .single();
         if (error) {
-          console.error('Error fetching user preferences:', error);
+          logError('Error fetching user preferences:', error);
           setPreferences({ ...defaultPreferences, isLoading: false });
           return;
         }
@@ -63,7 +65,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
         setPreferences({ ...defaultPreferences, isLoading: false });
       }
     } catch (error) {
-      console.error('Error in fetchPreferences:', error);
+      logError('Error in fetchPreferences:', error);
       setPreferences(prev => ({ ...prev, isLoading: false }));
     }
   };
@@ -75,7 +77,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
         const client = await getSupabaseClient();
         setSupabaseClient(client);
       } catch (error) {
-        console.error('Error initializing Supabase client in UserPreferencesContext:', error);
+        logError('Error initializing Supabase client in UserPreferencesContext:', error);
         setPreferences(prev => ({ ...prev, isLoading: false }));
       }
     };
@@ -96,7 +98,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
           subscription = data.subscription;
         }
       } catch (error) {
-        console.error('Error setting up auth listener:', error);
+        logError('Error setting up auth listener:', error);
       }
     };
     setupAuthListener();

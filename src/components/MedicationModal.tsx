@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, AlertCircle, Lock } from 'lucide-react';
 import { getSupabaseClient } from '../lib/supabaseClient';
+import { error as logError } from '../utils/logger';
 import type { Medication, MedicationStatus } from '../types/database';
 import { useUserPreferences } from '../contexts/UserPreferencesContext';
 import { useSubscription } from '../hooks/useSubscription';
@@ -95,7 +96,7 @@ export default function MedicationModal({ isOpen, onClose, patientId, medication
       onSuccess();
       onClose();
     } catch (err) {
-      console.error('Error saving medication:', err);
+      logError('Error saving medication:', err);
       setError((err as Error).message);
     } finally {
       setLoading(false);

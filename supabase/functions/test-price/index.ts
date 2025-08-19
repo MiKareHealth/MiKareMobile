@@ -1,5 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import Stripe from 'https://esm.sh/stripe@12.6.0?target=deno';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { log, error as logError } from '../../../src/utils/logger';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -39,7 +41,7 @@ serve(async (req) => {
     // Retrieve the price to check its configuration
     const price = await stripe.prices.retrieve(priceId);
     
-    console.log('Price details:', {
+    log('Price details:', {
       id: price.id,
       active: price.active,
       type: price.type,
@@ -62,7 +64,7 @@ serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
-    console.error('Error:', err);
+    logError('Error:', err);
     return new Response(
       JSON.stringify({ error: err.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

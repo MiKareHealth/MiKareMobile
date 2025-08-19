@@ -5,6 +5,7 @@ import type { PatientDocument } from '../types/database';
 import { getSignedUrlFromFileUrl } from '../lib/fileUtils';
 import { DocumentDownloadButton } from './DocumentDownloadButton';
 import { useSubscription } from '../hooks/useSubscription';
+import { error as logError } from '../utils/logger';
 
 interface DocumentModalProps {
   isOpen: boolean;
@@ -115,7 +116,7 @@ export default function DocumentModal({ isOpen, onClose, patientId, document, on
           supabase.functions.invoke('summarize-document', {
             body: { document_id: newDoc.id },
           }).then(({ error: functionError }) => {
-            if (functionError) console.error('Error invoking summary function:', functionError);
+            if (functionError) logError('Error invoking summary function:', functionError);
           });
         }
       }
@@ -123,7 +124,7 @@ export default function DocumentModal({ isOpen, onClose, patientId, document, on
       onSuccess();
       onClose();
     } catch (err) {
-      console.error('Error handling document:', err);
+      logError('Error handling document:', err);
       setError((err as Error).message);
     } finally {
       setLoading(false);

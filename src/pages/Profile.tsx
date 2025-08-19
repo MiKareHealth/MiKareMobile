@@ -9,6 +9,7 @@ import { getSupabaseClient } from '../lib/supabaseClient';
 import Layout from '../components/Layout';
 import { usePatients } from '../contexts/PatientsContext';
 import Skeleton from '../components/Skeleton';
+import { error as logError } from '../utils/logger';
 
 interface Profile {
   username: string;
@@ -60,7 +61,7 @@ export default function Profile() {
           setAvatarUrl(profile.avatar_url);
         }
       } catch (err) {
-        console.error('Error fetching profile:', err);
+        logError('Error fetching profile:', err);
         setError((err as Error).message);
       }
     };
@@ -97,7 +98,7 @@ export default function Profile() {
           }
         }
       } catch (err) {
-        console.error('Error updating session on logout:', err);
+        logError('Error updating session on logout:', err);
         // Continue with sign out even if session update fails
       }
       
@@ -111,7 +112,7 @@ export default function Profile() {
           await supabase.auth.signOut();
           signOutSuccess = true;
         } catch (error) {
-          console.error(`Sign out attempt ${signOutAttempts + 1} failed:`, error);
+          logError(`Sign out attempt ${signOutAttempts + 1} failed:`, error);
           signOutAttempts++;
           if (signOutAttempts < maxAttempts) {
             // Wait before retrying
@@ -126,7 +127,7 @@ export default function Profile() {
       // Redirect to signin regardless of server-side logout success
       navigate('/signin');
     } catch (error) {
-      console.error('Error during sign out process:', error);
+      logError('Error during sign out process:', error);
       // Force client-side logout
       localStorage.clear();
       navigate('/signin');
@@ -158,7 +159,7 @@ export default function Profile() {
       
       setSuccessMessage('Profile updated successfully');
     } catch (err) {
-      console.error('Error updating profile:', err);
+      logError('Error updating profile:', err);
       setError((err as Error).message);
     } finally {
       setLoading(false);

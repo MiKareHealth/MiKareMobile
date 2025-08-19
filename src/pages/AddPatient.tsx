@@ -8,6 +8,7 @@ import { tokens } from '../styles/tokens';
 import type { Patient } from '../types/database';
 import { Region } from '../lib/regionDetection';
 import { usePatients } from '../contexts/PatientsContext';
+import { log, error as logError } from '../utils/logger';
 
 export default function AddPatient() {
   const navigate = useNavigate();
@@ -27,11 +28,11 @@ export default function AddPatient() {
       try {
         // Get the current region from localStorage
         const currentRegion = getCurrentRegion();
-        console.log('Current region from localStorage:', currentRegion);
+        log('Current region from localStorage:', currentRegion);
         
         // Initialize client with the current region
         let client = await getSupabaseClient();
-        console.log('Initialized Supabase client for region:', currentRegion);
+        log('Initialized Supabase client for region:', currentRegion);
         
         setSupabaseClient(client);
         setCurrentRegion(currentRegion);
@@ -41,11 +42,11 @@ export default function AddPatient() {
         if (userError) throw userError;
         if (!user) throw new Error('Not authenticated');
         
-        console.log('Current user:', user.id);
-        console.log('User metadata:', user.user_metadata);
+        log('Current user:', user.id);
+        log('User metadata:', user.user_metadata);
         setUser(user);
       } catch (err) {
-        console.error('Error initializing Supabase client:', err);
+        logError('Error initializing Supabase client:', err);
         setError('Failed to initialize client. Please try signing in again.');
         navigate('/signin');
       }
@@ -110,7 +111,7 @@ export default function AddPatient() {
         .single();
 
       if (insertError) {
-        console.error('Error inserting patient:', insertError);
+        logError('Error inserting patient:', insertError);
         throw insertError;
       }
       const patientId = inserted?.id;
@@ -145,7 +146,7 @@ export default function AddPatient() {
         try {
           // Optionally show a loading state here if you want
           const fileName = `${user.id}/${photoFile.name}`;
-          console.log('Uploading photo:', { fileName, userId: user.id });
+          log('Uploading photo:', { fileName, userId: user.id });
 
           // Upload the file (assume bucket exists)
           const { error: uploadError } = await supabaseClient.storage
@@ -155,7 +156,7 @@ export default function AddPatient() {
               upsert: false
             });
           if (uploadError) {
-            console.error('Photo upload error details:', {
+            logError('Photo upload error details:', {
               fileName,
               userId: user.id,
               uploadError
@@ -175,7 +176,7 @@ export default function AddPatient() {
             .eq('id', patientId);
           if (updateError) throw updateError;
         } catch (uploadErr) {
-          console.error('Error handling photo upload:', uploadErr);
+          logError('Error handling photo upload:', uploadErr);
           // Continue without the photo if upload fails
         }
       }
@@ -196,7 +197,7 @@ export default function AddPatient() {
       }
       navigate('/');
     } catch (err) {
-      console.error('Error creating patient:', err);
+      logError('Error creating patient:', err);
       setError((err as Error).message);
     } finally {
       setLoading(false);

@@ -9,6 +9,7 @@ import { tokens } from '../styles/tokens';
 import { getEmoji } from '../utils/moodUtils';
 import { getCurrentDateInTimezone, isToday } from '../utils/timeUtils';
 import SubscriptionFeatureBlock from './SubscriptionFeatureBlock';
+import { error as logError } from '../utils/logger';
 
 interface MoodTabProps {
   patientId: string;
@@ -53,7 +54,7 @@ export default function MoodTab({ patientId, initialEntries, onEntryEdit, isFree
       
       setMoodEntries(data || []);
     } catch (err) {
-      console.error('Error fetching mood entries:', err);
+      logError('Error fetching mood entries:', err);
     } finally {
       setLoading(false);
     }

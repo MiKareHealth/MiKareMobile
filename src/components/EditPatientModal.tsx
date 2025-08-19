@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Camera, X, AlertCircle } from 'lucide-react';
 import { getSupabaseClient } from '../lib/supabaseClient';
+import { error as logError } from '../utils/logger';
 import type { Patient } from '../types/database';
 
 interface EditPatientModalProps {
@@ -139,7 +140,7 @@ export default function EditPatientModal({
       onClose();
       
     } catch (err) {
-      console.error('Error updating patient:', err);
+      logError('Error updating patient:', err);
       setError((err as Error).message);
     } finally {
       setLoading(false);

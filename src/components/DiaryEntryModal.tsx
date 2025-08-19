@@ -11,6 +11,7 @@ import { transcribeAudio } from '../lib/audioTranscription';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { DocumentDownloadButton } from './DocumentDownloadButton';
 import { useSubscription } from '../hooks/useSubscription';
+import { log, error as logError } from '../utils/logger';
 
 interface DiaryEntryModalProps {
   isOpen: boolean;
@@ -119,7 +120,7 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
         };
       }
     } catch (error) {
-      console.log('Permissions API not fully supported');
+      logError('Permissions API not fully supported');
     }
   };
 
@@ -136,7 +137,7 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
       setHasRecordingPermission(true);
       return true;
     } catch (error: any) {
-      console.error('Microphone permission error:', error);
+      logError('Microphone permission error:', error);
       
       let errorMessage = 'Unable to access microphone. ';
       
@@ -217,7 +218,7 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
       };
 
       mediaRecorder.onerror = (event: any) => {
-        console.error('MediaRecorder error:', event.error);
+        logError('MediaRecorder error:', event.error);
         setPermissionError(`Recording error: ${event.error?.message || 'Unknown error'}`);
         stopRecording();
       };
@@ -233,7 +234,7 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
       }, 1000);
 
     } catch (error: any) {
-      console.error('Error starting recording:', error);
+      logError('Error starting recording:', error);
       
       let errorMessage = 'Could not start recording. ';
       
@@ -291,7 +292,7 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
         setNotes((prev: string) => prev ? `${prev}\n\n${data.transcription}` : data.transcription);
       }
     } catch (error) {
-      console.error('Transcription error:', error);
+      logError('Transcription error:', error);
       setPermissionError('Failed to transcribe audio. Please try typing your notes instead.');
     } finally {
       setIsLoading(false);
@@ -352,7 +353,7 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
       setAttendees([]);
       setPermissionError('');
     } catch (error) {
-      console.error('Error saving diary entry:', error);
+      logError('Error saving diary entry:', error);
       alert('Failed to save diary entry. Please try again.');
     } finally {
       setIsLoading(false);
@@ -383,7 +384,7 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
           throw new Error('Failed to initialize Supabase client');
         }
       } catch (err) {
-        console.error('Error initializing Supabase client:', err);
+        logError('Error initializing Supabase client:', err);
         setError('Failed to initialize database connection. Please try refreshing the page.');
         setIsClientInitialized(false);
       }
@@ -427,14 +428,14 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
       let uploadedFileName: string | null = null;
       let originalFileName: string | null = null;
       if (file) {
-        console.log('Starting file upload process for:', file.name);
+        log('Starting file upload process for:', file.name);
         originalFileName = file.name;
         
         // Use simple filename format like DocumentModal
         const uniqueFileName = `${profileId}/${Date.now()}-${file.name}`;
         uploadedFileName = uniqueFileName; // Store for use in database record
         
-        console.log('Upload details:', {
+        log('Upload details:', {
           originalName: file.name,
           uniqueFileName,
           fileSize: file.size,
@@ -451,18 +452,18 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
           });
         
         if (uploadError) {
-          console.error('Upload failed:', uploadError);
+          logError('Upload failed:', uploadError);
           throw uploadError;
         }
         
-        console.log('File uploaded successfully to path:', uniqueFileName);
+        log('File uploaded successfully to path:', uniqueFileName);
         
         const { data: { publicUrl } } = supabaseClient.storage
           .from('patient-documents')
           .getPublicUrl(uniqueFileName);
         fileUrl = publicUrl;
         
-        console.log('Generated public URL:', publicUrl);
+        log('Generated public URL:', publicUrl);
       }
 
       const entryData = {
@@ -502,7 +503,7 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
 
       // If we have successfully uploaded a regular file, add it to patient_documents
       if (file && fileUrl && entryId && uploadedFileName && originalFileName) {
-        console.log('Creating database record for uploaded file:', {
+        log('Creating database record for uploaded file:', {
           uploadedFileName,
           originalFileName,
           fileUrl,
@@ -526,7 +527,7 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
           summary: null // Initially null
         };
         
-        console.log('Inserting document record:', documentData);
+        log('Inserting document record:', documentData);
         
         const { data: newDoc, error: docError } = await supabaseClient
           .from('patient_documents')
@@ -535,14 +536,14 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
           .single();
           
         if (docError) {
-          console.error('Error adding file to documents:', docError);
+          logError('Error adding file to documents:', docError);
         } else if (newDoc?.id) {
-          console.log('Document record created successfully with ID:', newDoc.id);
+          log('Document record created successfully with ID:', newDoc.id);
           // Fire and forget the summarization function
           supabaseClient.functions.invoke('summarize-document', {
             body: { document_id: newDoc.id },
           }).then(({ error: functionError }) => {
-            if (functionError) console.error('Error invoking summary function:', functionError);
+            if (functionError) logError('Error invoking summary function:', functionError);
           });
         }
       }
@@ -550,7 +551,7 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
       onEntrySaved();
       onClose();
     } catch (err) {
-      console.error('Error in handleSubmit:', err);
+      logError('Error in handleSubmit:', err);
       setError((err as Error).message);
     } finally {
       setLoading(false);
@@ -578,7 +579,7 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
       onEntrySaved();
       onClose();
     } catch (err) {
-      console.error('Error deleting diary entry:', err);
+      logError('Error deleting diary entry:', err);
       setError((err as Error).message);
     } finally {
       setDeleteLoading(false);
@@ -631,7 +632,7 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
       
       return publicUrl;
     } catch (err) {
-      console.error('Upload error:', err);
+      logError('Upload error:', err);
       setError(`Error uploading audio: ${(err as Error).message}`);
       return null;
     } finally {
@@ -663,7 +664,7 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
       }
       
     } catch (err) {
-      console.error('Transcription error:', err);
+      logError('Transcription error:', err);
       setTranscriptionError(`Error transcribing audio: ${(err as Error).message}`);
       setAudioTranscriptionAvailable(false);
     } finally {
@@ -716,7 +717,7 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
         if (error) throw error;
         setAttachedDocuments(data || []);
       } catch (err) {
-        console.error('Error fetching attached documents:', err);
+        logError('Error fetching attached documents:', err);
         setAttachedDocuments([]);
       } finally {
         setDocsLoading(false);

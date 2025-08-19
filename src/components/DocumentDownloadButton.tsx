@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+import { Download } from 'lucide-react';
 import { getSignedUrlFromFileUrl } from '../lib/fileUtils';
+import { log, error as logError } from '../utils/logger';
 
 export function DocumentDownloadButton({ doc }: { doc: { file_url: string, file_name: string } }) {
   const [loading, setLoading] = useState(false);
@@ -10,23 +12,23 @@ export function DocumentDownloadButton({ doc }: { doc: { file_url: string, file_
     setError(null);
     
     try {
-      console.log('=== Starting download process ===');
-      console.log('Document details:', {
+      log('=== Starting download process ===');
+      log('Document details:', {
         file_name: doc.file_name,
         file_url: doc.file_url
       });
       
       const signedUrl = await getSignedUrlFromFileUrl(doc.file_url);
       if (signedUrl) {
-        console.log('Successfully generated signed URL for download');
-        console.log('Opening signed URL in new tab');
+        log('Successfully generated signed URL for download');
+        log('Opening signed URL in new tab');
         window.open(signedUrl, '_blank', 'noopener,noreferrer');
       } else {
-        console.error('Failed to generate signed URL for file:', doc.file_name);
+        logError('Failed to generate signed URL for file:', doc.file_name);
         setError('File not found in storage. It may have been deleted or moved.');
       }
     } catch (err: any) {
-      console.error('Error generating download link:', err);
+      logError('Error generating download link:', err);
       
       // Provide more specific error messages based on error type
       if (err?.message?.includes('Object not found') || err?.message?.includes('404')) {
@@ -40,7 +42,7 @@ export function DocumentDownloadButton({ doc }: { doc: { file_url: string, file_
       }
     } finally {
       setLoading(false);
-      console.log('=== Download process completed ===');
+      log('=== Download process completed ===');
     }
   };
 

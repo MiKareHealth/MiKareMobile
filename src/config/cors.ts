@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 import { createPartFromUri, GoogleGenAI } from 'https://cdn.jsdelivr.net/npm/@google/genai/+esm';
 import { corsHeaders } from '../_shared/cors.ts';
+import { error as logError } from '../utils/logger';
 
 // Initialize Supabase client (uses the SERVICE_ROLE key)
 const supabase = createClient(
@@ -31,7 +32,7 @@ serve(async (req) => {
     const { data: urlData, error: urlError } =
       await supabase.storage.from(bucket).createSignedUrl(path, 60);
     if (urlError || !urlData?.signedUrl) {
-      console.error('Signed URL error:', urlError);
+      logError('Signed URL error:', urlError);
       return new Response(
         JSON.stringify({ error: 'Unable to generate download URL' }),
         { status: 500, headers: corsHeaders }
@@ -99,7 +100,7 @@ serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
-    console.error('Unexpected error:', err);
+    logError('Unexpected error:', err);
     return new Response(
       JSON.stringify({ error: 'unable to process document for summary' }),
       { status: 500, headers: corsHeaders }

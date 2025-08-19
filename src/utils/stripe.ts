@@ -1,6 +1,7 @@
 import { getSupabaseClient, getCurrentRegion } from '../lib/supabaseClient';
 import type { PlanKey } from '../config/pricing';
 import { PRICING } from '../config/pricing';
+import { error as logError } from './logger';
 
 // Type for checkout session creation params
 interface CreateCheckoutSessionParams {
@@ -39,7 +40,7 @@ export async function createCheckoutSession({
     });
 
     if (error) {
-      console.error('Supabase function error:', error);
+      logError('Supabase function error:', error);
       throw new Error('Failed to create checkout session');
     }
     
@@ -49,7 +50,7 @@ export async function createCheckoutSession({
 
     return data;
   } catch (error) {
-    console.error('Error creating checkout session:', error);
+    logError('Error creating checkout session:', error);
     throw error;
   }
 }
@@ -106,7 +107,7 @@ export async function handleSubscription(planKey: PlanKey) {
       throw new Error('No checkout URL returned');
     }
   } catch (error) {
-    console.error('Subscription error:', error);
+    logError('Subscription error:', error);
     throw error;
   }
 }

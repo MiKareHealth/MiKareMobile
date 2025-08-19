@@ -3,6 +3,7 @@ import { Brain, Loader } from 'lucide-react';
 import { getSupabaseClient } from '../lib/supabaseClient';
 import { queryGemini } from '../lib/gemini';
 import type { DiaryEntry, Symptom } from '../types/database';
+import { error as logError } from '../utils/logger';
 
 interface AIAnalysisButtonsProps {
   patientId: string;
@@ -113,7 +114,7 @@ export default function AIAnalysisButtons({
       onSuccess();
       
     } catch (err) {
-      console.error('AI Analysis error:', err);
+      logError('AI Analysis error:', err);
       setError((err as Error).message);
     } finally {
       setLoading(null);

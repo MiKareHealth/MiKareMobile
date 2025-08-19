@@ -4,7 +4,7 @@ import { Eye, EyeOff, AlertCircle, Lock, CheckCircle } from 'lucide-react';
 import { tokens, theme } from '../styles/tokens';
 import { themeClasses } from '../styles/themeUtils';
 import { getSupabaseClient, switchToRegion, getCurrentRegion } from '../lib/supabaseClient';
-import { log, error as logError } from '../utils/logger';
+import { log, error as logError, warn } from '../utils/logger';
 import RegionSelector from '../components/RegionSelector';
 import { Region, setUserRegion } from '../lib/regionDetection';
 import { SIGNIN_IMAGE, SIGNIN_VIDEO, MIKARE_LOGO } from '../config/branding';
@@ -429,7 +429,7 @@ export default function SignIn() {
         log("Demo sign in successful, user data:", data);
         
         if (!data.session) {
-            console.warn("Auth succeeded but no session was returned");
+            warn("Auth succeeded but no session was returned");
         }
 
         // Save demo email in localStorage if remember me is checked
@@ -719,7 +719,7 @@ export default function SignIn() {
                       </Link>
                     </div>
                     <div className="text-xs text-center mt-2 text-gray-400">
-                      version 1.2.21
+                      version 1.2.23
                     </div>
                   </div>
                 </div>

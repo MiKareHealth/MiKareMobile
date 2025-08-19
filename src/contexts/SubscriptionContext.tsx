@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { User } from '@supabase/supabase-js';
 import { getSupabaseClient } from '../lib/supabaseClient';
+import { error as logError } from '../utils/logger';
 
 interface SubscriptionContextType {
   subscriptionPlan: string | null;
@@ -77,7 +79,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
           subscription = data.subscription;
         }
       } catch (error) {
-        console.error('Error setting up auth listener in SubscriptionContext:', error);
+        logError('Error setting up auth listener in SubscriptionContext:', error);
       }
     };
     setupAuthListener();

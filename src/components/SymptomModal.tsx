@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, AlertCircle, Lock } from 'lucide-react';
 import { getSupabaseClient } from '../lib/supabaseClient';
+import { error as logError } from '../utils/logger';
 import type { Symptom } from '../types/database';
 import { useSubscription } from '../hooks/useSubscription';
 
@@ -79,7 +80,7 @@ export default function SymptomModal({ isOpen, onClose, patientId, symptom, onSu
       onSuccess();
       onClose();
     } catch (err) {
-      console.error('Error saving symptom:', err);
+      logError('Error saving symptom:', err);
       setError((err as Error).message);
     } finally {
       setLoading(false);

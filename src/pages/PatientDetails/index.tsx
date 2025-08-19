@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { getSupabaseClient } from '../../lib/supabaseClient';
 import DiaryEntryModal from '../../components/DiaryEntryModal';
 import SymptomModal from '../../components/SymptomModal';
 import NoteModal from '../../components/NoteModal';
@@ -10,6 +12,7 @@ import PatientDetailsMobile from '../../components/PatientDetailsMobile';
 import { usePatientData } from '../../hooks/usePatientData';
 import { useSubscription } from '../../hooks/useSubscription';
 import type { PatientDocument, DiaryEntry, Symptom } from '../../types/database';
+import { log } from '../../utils/logger';
 
 export type TabType = 'diary' | 'documents' | 'notes' | 'symptoms' | 'medications' | 'mood';
 
@@ -66,8 +69,8 @@ export default function PatientDetails() {
   });
 
   // Debug logging for date filtering
-  console.log('Date range:', { dateRangeStart, dateRangeEnd });
-  console.log('Filtered entries count:', filteredDiaryEntries.length, 'of', diaryEntries.length);
+  log('Date range:', { dateRangeStart, dateRangeEnd });
+  log('Filtered entries count:', filteredDiaryEntries.length, 'of', diaryEntries.length);
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);

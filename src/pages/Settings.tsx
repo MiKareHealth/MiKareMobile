@@ -35,6 +35,7 @@ import { normalizeRegion } from '../utils/stripe';
 import { useSubscription } from '../hooks/useSubscription';
 import { usePatients, PatientSummary } from '../contexts/PatientsContext';
 import type { PlanKey } from '../config/pricing';
+import { error as logError } from '../utils/logger';
 
 // Define timezone options
 const timezoneOptions = [
@@ -173,7 +174,7 @@ export default function Settings() {
           }
         }
       } catch (err) {
-        console.error('Error fetching settings:', err);
+        logError('Error fetching settings:', err);
         setError((err as Error).message);
       }
     };
@@ -219,7 +220,7 @@ export default function Settings() {
       setPhotoPreview(publicUrl);
       setSuccessMessage('Profile photo updated successfully');
     } catch (err) {
-      console.error('Error uploading photo:', err);
+      logError('Error uploading photo:', err);
       setError((err as Error).message);
     } finally {
       setUploading(false);
@@ -276,7 +277,7 @@ export default function Settings() {
       setSuccessMessage('Settings updated successfully');
       await refreshPreferences();
     } catch (err) {
-      console.error('Error updating settings:', err);
+      logError('Error updating settings:', err);
       setError((err as Error).message);
     } finally {
       setLoading(false);
@@ -313,7 +314,7 @@ export default function Settings() {
       await supabase.auth.signOut();
       navigate('/signin');
     } catch (err) {
-      console.error('Error deleting account:', err);
+      logError('Error deleting account:', err);
       setError((err as Error).message);
     } finally {
       setDeletingAccount(false);
@@ -328,7 +329,7 @@ export default function Settings() {
       await supabase.auth.signOut();
       navigate('/signin');
     } catch (err) {
-      console.error('Error signing out:', err);
+      logError('Error signing out:', err);
       setError((err as Error).message);
     }
   };
@@ -366,7 +367,7 @@ export default function Settings() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Error exporting data:', err);
+      logError('Error exporting data:', err);
       setError((err as Error).message);
     }
   };
@@ -414,7 +415,7 @@ export default function Settings() {
       setLoading(true);
       await handleSubscription(planKey);
     } catch (error) {
-      console.error('Subscription error:', error);
+      logError('Subscription error:', error);
       setError(`Subscription error: ${(error as Error).message}`);
     } finally {
       setLoading(false);

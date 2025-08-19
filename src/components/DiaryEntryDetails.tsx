@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Stethoscope, Pill, BookOpen, Brain, Trash2, AlertCircle } from 'lucide-react';
 import { getSupabaseClient } from '../lib/supabaseClient';
+import { error as logError } from '../utils/logger';
 import type { DiaryEntry, PatientDocument } from '../types/database';
 import { useUserPreferences } from '../contexts/UserPreferencesContext';
 import { DocumentDownloadButton } from './DocumentDownloadButton';
@@ -37,7 +38,7 @@ export default function DiaryEntryDetails({ entry, isOpen, onClose, onUpdate }: 
         if (error) throw error;
         setDocuments(data || []);
       } catch (err) {
-        console.error('Error fetching documents for diary entry:', err);
+        logError('Error fetching documents for diary entry:', err);
         setDocuments([]);
       } finally {
         setDocsLoading(false);

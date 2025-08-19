@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { User } from '@supabase/supabase-js';
 import { getSupabaseClient } from '../lib/supabaseClient';
+import { log, error as logError } from '../utils/logger';
 import SessionTimeoutModal from '../components/SessionTimeoutModal';
 
 interface SessionContextType {
@@ -55,7 +57,7 @@ export function SessionProvider({
   
   // Logout function
   const logout = async () => {
-    console.log('Session expired, logging out...');
+    log('Session expired, logging out...');
     try {
       // Clear session data from localStorage
       localStorage.removeItem('sessionStart');
@@ -85,7 +87,7 @@ export function SessionProvider({
           }
         }
       } catch (err) {
-        console.error('Error updating session record:', err);
+        logError('Error updating session record:', err);
       }
       
       // Sign out
@@ -96,7 +98,7 @@ export function SessionProvider({
       localStorage.clear();
       navigate('/signin');
     } catch (error) {
-      console.error('Error during logout:', error);
+      logError('Error during logout:', error);
       // Force logout even if there's an error
       localStorage.clear();
       navigate('/signin');
@@ -203,7 +205,7 @@ export function SessionProvider({
               }
             }
           } catch (err) {
-            console.error('Error getting user preferences:', err);
+            logError('Error getting user preferences:', err);
             // Default to 30 minutes if we can't get preferences
             localStorage.setItem('sessionLength', '30');
           }
@@ -214,7 +216,7 @@ export function SessionProvider({
           }
         }
       } catch (err) {
-        console.error('Error initializing session:', err);
+        logError('Error initializing session:', err);
       }
     };
     

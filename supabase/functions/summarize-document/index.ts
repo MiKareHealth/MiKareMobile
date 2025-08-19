@@ -1,5 +1,7 @@
 // functions/summarize-document/index.ts
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
+import { log, error as logError } from '../../../src/utils/logger';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -83,7 +85,7 @@ async function summarizeWithGeminiFile(
   );
 }
 
-Deno.serve(async (req) => {
+serve(async (req) => {
   // CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -93,7 +95,7 @@ Deno.serve(async (req) => {
   let body: { document_id?: string };
   try {
     body = await req.json();
-    console.log("Received payload:", body);
+    log("Received payload:", body);
     if (!body.document_id) throw new Error();
   } catch {
     return new Response(
@@ -179,7 +181,7 @@ Deno.serve(async (req) => {
       try {
         summary = await summarizeWithGemini(geminiKey, text);
       } catch (err) {
-        console.error("Gemini API error (plain text):", err);
+        logError("Gemini API error (plain text):", err);
         throw err;
       }
     } else if (doc.file_type === "application/pdf") {
@@ -189,7 +191,7 @@ Deno.serve(async (req) => {
       try {
         summary = await summarizeWithGeminiFile(geminiKey, b64, doc.file_type);
       } catch (err) {
-        console.error("Gemini API error (PDF):", err);
+        logError("Gemini API error (PDF):", err);
         throw err;
       }
     } else {

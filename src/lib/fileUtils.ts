@@ -1,4 +1,5 @@
 import { getSupabaseClient } from './supabaseClient';
+import { log, error as logError } from '../utils/logger';
 
 /**
  * Checks if a file exists in the patient-documents bucket.
@@ -8,14 +9,14 @@ export async function checkFileExists(path: string): Promise<boolean> {
   try {
     const supabase = await getSupabaseClient();
     
-    console.log('Checking if file exists:', path);
+    log('Checking if file exists:', path);
     
     // Split path to get directory and filename
     const pathParts = path.split('/');
     const directory = pathParts.slice(0, -1).join('/');
     const filename = pathParts[pathParts.length - 1];
     
-    console.log('Checking directory:', directory, 'for file:', filename);
+    log('Checking directory:', directory, 'for file:', filename);
     
     // First try to list the directory to see if we have access
     const { data, error } = await supabase
@@ -24,15 +25,15 @@ export async function checkFileExists(path: string): Promise<boolean> {
       .list(directory, { search: filename });
       
     if (error) {
-      console.error('Error checking file existence:', error);
-      console.error('Error details:', {
+      logError('Error checking file existence:', error);
+      logError('Error details:', {
         message: error.message,
         name: error.name
       });
       
       // If it's a permission error, try a different approach
       if (error.message?.includes('permission') || error.message?.includes('403')) {
-        console.log('Permission error detected, trying direct file access...');
+        log('Permission error detected, trying direct file access...');
         
         // Try to get file metadata directly (this might work even if list doesn't)
         const { data: fileData, error: fileError } = await supabase
@@ -41,13 +42,13 @@ export async function checkFileExists(path: string): Promise<boolean> {
           .list(directory);
           
         if (fileError) {
-          console.error('Direct file access also failed:', fileError);
+          logError('Direct file access also failed:', fileError);
           return false;
         }
         
-        console.log('Directory listing successful, checking for file...');
+        log('Directory listing successful, checking for file...');
         const exists = fileData?.some(file => file.name === filename);
-        console.log('File existence check result:', { path, exists, filesInDir: fileData?.map(f => f.name) });
+        log('File existence check result:', { path, exists, filesInDir: fileData?.map(f => f.name) });
         return exists || false;
       }
       
@@ -55,11 +56,11 @@ export async function checkFileExists(path: string): Promise<boolean> {
     }
     
     const exists = data?.some(file => file.name === filename);
-    console.log('File existence check result:', { path, exists, filesInDir: data?.map(f => f.name) });
+    log('File existence check result:', { path, exists, filesInDir: data?.map(f => f.name) });
     
     return exists || false;
   } catch (error) {
-    console.error('Unexpected error checking file existence:', error);
+    logError('Unexpected error checking file existence:', error);
     return false;
   }
 }
@@ -90,13 +91,13 @@ export async function validateDocumentFile(doc: { file_url: string, file_name: s
     }
     
     if (!path) {
-      console.error('Could not extract file path from URL:', doc.file_url);
+      logError('Could not extract file path from URL:', doc.file_url);
       return false;
     }
     
     return await checkFileExists(path);
   } catch (error) {
-    console.error('Error validating document file:', error);
+    logError('Error validating document file:', error);
     return false;
   }
 }
@@ -111,11 +112,11 @@ export async function getSignedFileUrl(path: string, expiresIn: number = 300): P
     const supabase = await getSupabaseClient();
     
     // Log the path being used for debugging
-    console.log('Generating signed URL for path:', path);
+    log('Generating signed URL for path:', path);
     
     // Skip file existence check - let RLS handle access control
     // If the file doesn't exist or user doesn't have access, the signed URL generation will fail
-    console.log('Skipping file existence check, generating signed URL directly...');
+    log('Skipping file existence check, generating signed URL directly...');
     
     const { data, error } = await supabase
       .storage
@@ -125,20 +126,20 @@ export async function getSignedFileUrl(path: string, expiresIn: number = 300): P
       });
       
     if (error) {
-      console.error('Error generating signed URL:', error);
-      console.error('Path that failed:', path);
-      console.error('Error details:', {
+      logError('Error generating signed URL:', error);
+      logError('Path that failed:', path);
+      logError('Error details:', {
         message: error.message,
         name: error.name
       });
       return null;
     }
     
-    console.log('Successfully generated signed URL for path:', path);
-    console.log('Signed URL:', data?.signedUrl);
+    log('Successfully generated signed URL for path:', path);
+    log('Signed URL:', data?.signedUrl);
     return data?.signedUrl || null;
   } catch (error) {
-    console.error('Unexpected error in getSignedFileUrl:', error);
+    logError('Unexpected error in getSignedFileUrl:', error);
     return null;
   }
 }
@@ -151,8 +152,8 @@ export async function getSignedFileUrl(path: string, expiresIn: number = 300): P
 export function extractStoragePathFromUrl(fileUrl: string): string | null {
   try {
     const url = new URL(fileUrl);
-    console.log('Parsing URL:', fileUrl);
-    console.log('URL pathname:', url.pathname);
+    log('Parsing URL:', fileUrl);
+    log('URL pathname:', url.pathname);
     
     // Parse the URL to extract bucket and key
     // Expected format: https://.../storage/v1/object/public/patient-documents/d280df23-af13-4a33-a77e-3208c91f2caa/1750684923785.pdf
@@ -167,12 +168,12 @@ export function extractStoragePathFromUrl(fileUrl: string): string | null {
         const [bucket, ...keyParts] = bucketAndKey.split('/');
         const key = keyParts.join('/');
         
-        console.log('Extracted bucket:', bucket, 'key:', key);
+        log('Extracted bucket:', bucket, 'key:', key);
         
         if (bucket === 'patient-documents' && key) {
           return key;
         } else {
-          console.error('Invalid bucket or missing key:', { bucket, key });
+          logError('Invalid bucket or missing key:', { bucket, key });
           return null;
         }
       }
@@ -184,12 +185,12 @@ export function extractStoragePathFromUrl(fileUrl: string): string | null {
         const [bucket, ...keyParts] = bucketAndKey.split('/');
         const key = keyParts.join('/');
         
-        console.log('Extracted bucket from signed URL:', bucket, 'key:', key);
+        log('Extracted bucket from signed URL:', bucket, 'key:', key);
         
         if (bucket === 'patient-documents' && key) {
           return key;
         } else {
-          console.error('Invalid bucket or missing key from signed URL:', { bucket, key });
+          logError('Invalid bucket or missing key from signed URL:', { bucket, key });
           return null;
         }
       }
@@ -201,21 +202,21 @@ export function extractStoragePathFromUrl(fileUrl: string): string | null {
         const [bucket, ...keyParts] = bucketAndKey.split('/');
         const key = keyParts.join('/');
         
-        console.log('Extracted bucket from generic URL:', bucket, 'key:', key);
+        log('Extracted bucket from generic URL:', bucket, 'key:', key);
         
         if (bucket === 'patient-documents' && key) {
           return key;
         } else {
-          console.error('Invalid bucket or missing key from generic URL:', { bucket, key });
+          logError('Invalid bucket or missing key from generic URL:', { bucket, key });
           return null;
         }
       }
     }
     
-    console.error('Could not extract file path from URL:', fileUrl);
+    logError('Could not extract file path from URL:', fileUrl);
     return null;
   } catch (error) {
-    console.error('Error parsing file URL:', fileUrl, error);
+    logError('Error parsing file URL:', fileUrl, error);
     return null;
   }
 }
@@ -227,18 +228,18 @@ export function extractStoragePathFromUrl(fileUrl: string): string | null {
  */
 export async function getSignedUrlFromFileUrl(fileUrl: string, expiresIn: number = 300): Promise<string | null> {
   try {
-    console.log('Getting signed URL from file URL:', fileUrl);
+    log('Getting signed URL from file URL:', fileUrl);
     
     const storagePath = extractStoragePathFromUrl(fileUrl);
     if (!storagePath) {
-      console.error('Failed to extract storage path from URL');
+      logError('Failed to extract storage path from URL');
       return null;
     }
     
-    console.log('Extracted storage path:', storagePath);
+    log('Extracted storage path:', storagePath);
     return await getSignedFileUrl(storagePath, expiresIn);
   } catch (error) {
-    console.error('Error in getSignedUrlFromFileUrl:', error);
+    logError('Error in getSignedUrlFromFileUrl:', error);
     return null;
   }
 } 

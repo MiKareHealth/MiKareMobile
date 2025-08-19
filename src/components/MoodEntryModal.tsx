@@ -8,6 +8,7 @@ import type { MoodEntry } from '../types/database';
 import { theme } from '../styles/tokens';
 import { themeClasses } from '../styles/themeUtils';
 import { useSubscription } from '../hooks/useSubscription';
+import { error as logError } from '../utils/logger';
 
 interface MoodEntryModalProps {
   isOpen: boolean;
@@ -126,7 +127,7 @@ export default function MoodEntryModal({
       onSuccess();
       onClose();
     } catch (err) {
-      console.error('Error saving mood entry:', err);
+      logError('Error saving mood entry:', err);
       setError((err as Error).message);
     } finally {
       setLoading(false);

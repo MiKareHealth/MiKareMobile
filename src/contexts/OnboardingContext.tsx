@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
+import { error as logError } from '../utils/logger';
 
 // Define types for our state
 type OnboardingProfile = {
@@ -186,7 +187,7 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
         }
       }
     } catch (error) {
-      console.error('Failed to load onboarding state from sessionStorage:', error);
+      logError('Failed to load onboarding state from sessionStorage:', error);
     }
   }, []);
 
@@ -195,7 +196,7 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
     try {
       sessionStorage.setItem('onboardingState', JSON.stringify(state));
     } catch (error) {
-      console.error('Failed to save onboarding state to sessionStorage:', error);
+      logError('Failed to save onboarding state to sessionStorage:', error);
     }
   }, [state]);
 

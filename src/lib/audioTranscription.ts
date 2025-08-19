@@ -1,4 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getSupabaseClient } from './supabaseClient';
+import { error as logError } from '../utils/logger';
 
 // Initialize the Google Generative AI client
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GOOGLE_API_KEY || '');
@@ -33,7 +35,7 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
     
     return text;
   } catch (error) {
-    console.error("Transcription error:", error);
+    logError("Transcription error:", error);
     throw new Error(`Transcription failed: ${(error as Error).message}`);
   }
 }

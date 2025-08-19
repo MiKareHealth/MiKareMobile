@@ -1,5 +1,7 @@
 // supabase/functions/transcribe/index.ts
-import { createClient } from "npm:@supabase/supabase-js@2.39.7";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { error as logError } from '../../../src/utils/logger';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,7 +14,7 @@ interface RequestBody {
   prompt: string;
 }
 
-Deno.serve(async (req) => {
+serve(async (req) => {
   // Handle CORS preflight request
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -81,7 +83,7 @@ Deno.serve(async (req) => {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => null);
-      console.error('Gemini API error response:', errorData);
+      logError('Gemini API error response:', errorData);
       throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
     }
 
@@ -99,7 +101,7 @@ Deno.serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("Function error:", error);
+    logError("Function error:", error);
     
     return new Response(
       JSON.stringify({ 

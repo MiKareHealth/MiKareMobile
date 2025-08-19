@@ -12,6 +12,7 @@ interface PatientsContextType {
   addPatient: (patient: PatientSummary) => void;
   updatePatient: (patient: PatientSummary) => void;
   removePatient: (patientId: string) => void;
+  debugFetchPatients?: () => Promise<void>; // Optional debug function
 }
 
 const PatientsContext = createContext<PatientsContextType | undefined>(undefined);
@@ -42,6 +43,15 @@ export const PatientsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       
       if (!user) {
         console.log('[PatientsContext] fetchPatients: no user, clearing patients');
+        setPatients([]);
+        setLoading(false);
+        return;
+      }
+
+      // Additional check: ensure we have a valid session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.log('[PatientsContext] fetchPatients: no active session, waiting...');
         setPatients([]);
         setLoading(false);
         return;
@@ -96,7 +106,13 @@ export const PatientsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         
         if (user) {
           console.log('[PatientsContext] User already authenticated, fetching patients');
-          await fetchPatients();
+          try {
+            await fetchPatients();
+          } catch (error) {
+            console.error('[PatientsContext] Initial fetch failed:', error);
+            // If initial fetch fails, we'll rely on the fallback mechanism
+            setLoading(false);
+          }
         } else {
           console.log('[PatientsContext] No user found, waiting for auth state change');
           setLoading(false);
@@ -111,16 +127,48 @@ export const PatientsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (!isMounted) return;
           
           if (event === 'SIGNED_IN' && session?.user) {
-            console.log('[PatientsContext] User signed in, fetching patients');
+            console.log('[PatientsContext] User signed in, waiting for auth to be fully established...');
+            // Clear patients first to ensure clean state
             setPatients([]);
             setLoading(true);
-            await fetchPatients();
+            // Increased delay to ensure auth is fully established and context is ready
+            // Also add retry logic in case the first attempt fails
+            let retryCount = 0;
+            const maxRetries = 3;
+            
+            const attemptFetch = async () => {
+              if (!isMounted) return;
+              
+              try {
+                console.log('[PatientsContext] Attempting to fetch patients, retry:', retryCount);
+                await fetchPatients();
+              } catch (error) {
+                console.error('[PatientsContext] Fetch attempt failed:', error);
+                retryCount++;
+                if (retryCount < maxRetries && isMounted) {
+                  console.log('[PatientsContext] Retrying in 1 second...');
+                  setTimeout(attemptFetch, 1000);
+                } else if (isMounted) {
+                  console.error('[PatientsContext] Max retries reached, giving up');
+                  setLoading(false);
+                }
+              }
+            };
+            
+            // Initial delay before first attempt
+            setTimeout(attemptFetch, 1000);
           } else if (event === 'SIGNED_OUT') {
             console.log('[PatientsContext] User signed out, clearing patients');
             setPatients([]);
             setLoading(false);
+          } else if (event === 'TOKEN_REFRESHED') {
+            console.log('[PatientsContext] Token refreshed, checking if we need to refetch patients');
+            // Only refetch if we don't have patients and user is authenticated
+            if (isMounted && patients.length === 0 && session?.user) {
+              console.log('[PatientsContext] Refetching patients after token refresh');
+              fetchPatients();
+            }
           }
-          // Removed TOKEN_REFRESHED handler to prevent unnecessary re-fetching
         });
         
         console.log('[PatientsContext] Auth listener set up successfully');
@@ -159,12 +207,15 @@ export const PatientsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (currentRegion !== lastRegion) {
         console.log('[PatientsContext] Region changed:', lastRegion, '→', currentRegion);
         lastRegion = currentRegion;
-        // Only refetch if user is authenticated and we have patients
+        setPatients([]);
+        setLoading(true);
+        // Only fetch if user is authenticated
         const supabase = await getSupabaseClient();
         const { data: { user } } = await supabase.auth.getUser();
-        if (user && isMounted && patients.length > 0) {
-          setLoading(true);
+        if (user && isMounted) {
           await fetchPatients();
+        } else if (isMounted) {
+          setLoading(false);
         }
       }
     };
@@ -175,9 +226,54 @@ export const PatientsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       isMounted = false;
       if (interval) clearInterval(interval);
     };
-  }, [fetchPatients, authChecked, patients.length]);
+  }, [fetchPatients, authChecked]);
 
-  // Removed fallback mechanism to prevent infinite loops when user has no patients
+  // Fallback mechanism: if we're authenticated but have no patients after a delay, try to fetch again
+  useEffect(() => {
+    if (!authChecked || patients.length > 0) return;
+    
+    let timeout: NodeJS.Timeout;
+    let retryTimeout: NodeJS.Timeout;
+    let isMounted = true;
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    const fallbackFetch = async () => {
+      if (!isMounted) return;
+      
+      console.log('[PatientsContext] Fallback: checking if we should fetch patients, attempt:', retryCount + 1);
+      const supabase = await getSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user && isMounted && patients.length === 0 && !loading) {
+        try {
+          console.log('[PatientsContext] Fallback: user authenticated but no patients, fetching...');
+          await fetchPatients();
+        } catch (error) {
+          console.error('[PatientsContext] Fallback fetch failed:', error);
+          retryCount++;
+          if (retryCount < maxRetries && isMounted) {
+            console.log('[PatientsContext] Fallback: retrying in 2 seconds...');
+            retryTimeout = setTimeout(fallbackFetch, 2000);
+          }
+        }
+      } else if (isMounted && retryCount < maxRetries) {
+        // If no user or still loading, retry after a delay
+        retryCount++;
+        console.log('[PatientsContext] Fallback: no user or still loading, retrying in 2 seconds...');
+        retryTimeout = setTimeout(fallbackFetch, 2000);
+      }
+    };
+    
+    // Wait 3 seconds after auth is checked, then try to fetch if we still have no patients
+    timeout = setTimeout(fallbackFetch, 3000);
+    
+    return () => {
+      isMounted = false;
+      if (timeout) clearTimeout(timeout);
+      if (retryTimeout) clearTimeout(retryTimeout);
+    };
+  }, [authChecked, patients.length, loading, fetchPatients]);
 
   const addPatient = (patient: PatientSummary) => {
     setPatients((prev) => [patient, ...prev]);
@@ -206,24 +302,33 @@ export const PatientsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return;
       }
       
-      // Test 2: Check if we can query the patients table
-      const { data: testData, error: testError } = await supabase
-        .from('patients')
-        .select('count')
-        .eq('user_id', user.id);
-      
-      console.log('[PatientsContext] Test 2 - Database access:', { 
-        count: testData?.length || 0, 
-        error: testError 
+      // Test 2: Check session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.log('[PatientsContext] Test 2 - Session check:', { 
+        hasSession: !!session, 
+        error: sessionError,
+        sessionUser: session?.user?.email 
       });
       
-      // Test 3: Check RLS policies by trying to query without user_id filter
+      // Test 3: Check if we can query the patients table
+      const { data: testData, error: testError } = await supabase
+        .from('patients')
+        .select('id, full_name')
+        .eq('user_id', user.id);
+      
+      console.log('[PatientsContext] Test 3 - Database access:', { 
+        count: testData?.length || 0, 
+        error: testError,
+        data: testData 
+      });
+      
+      // Test 4: Check RLS policies by trying to query without user_id filter
       const { data: allData, error: allError } = await supabase
         .from('patients')
         .select('id, user_id, full_name')
         .limit(5);
       
-      console.log('[PatientsContext] Test 3 - RLS test:', { 
+      console.log('[PatientsContext] Test 4 - RLS test:', { 
         count: allData?.length || 0, 
         error: allError,
         data: allData 
@@ -241,9 +346,27 @@ export const PatientsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, []);
 
+  // Debug function to manually trigger patient fetch
+  const debugFetchPatients = async () => {
+    console.log('[PatientsContext] Debug fetch triggered');
+    try {
+      await fetchPatients();
+    } catch (error) {
+      console.error('[PatientsContext] Debug fetch failed:', error);
+    }
+  };
+
   return (
     <PatientsContext.Provider
-      value={{ patients, loading, refreshPatients: fetchPatients, addPatient, updatePatient, removePatient }}
+      value={{ 
+        patients, 
+        loading, 
+        refreshPatients: fetchPatients, 
+        addPatient, 
+        updatePatient, 
+        removePatient,
+        debugFetchPatients // Only available in development
+      }}
     >
       {children}
     </PatientsContext.Provider>

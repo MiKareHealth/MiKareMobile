@@ -35,6 +35,7 @@ import { TabType } from '../pages/PatientDetails';
 import Skeleton from './Skeleton';
 import { MIKARE_HEART_LOGO } from '../config/branding';
 import { GenerateReport } from './PDFExport';
+import DetailedReportModal from './DetailedReportModal';
 import SubscriptionFeatureBlock from './SubscriptionFeatureBlock';
 import { useSubscription } from '../hooks/useSubscription';
 import { usePatients, PatientSummary } from '../contexts/PatientsContext';
@@ -294,7 +295,10 @@ export default function PatientDetailsMobile({
                     max={dateRangeEnd || undefined}
                   />
                   {!dateRangeStart && (
-                    <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                    <div 
+                      className="absolute inset-0 flex items-center px-3 cursor-pointer"
+                      onClick={() => (document.getElementById('mobile-diary-start-date') as HTMLInputElement)?.showPicker()}
+                    >
                       <span className="text-sm font-medium text-gray-500">Start date</span>
                     </div>
                   )}
@@ -309,7 +313,10 @@ export default function PatientDetailsMobile({
                     min={dateRangeStart || undefined}
                   />
                   {!dateRangeEnd && (
-                    <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                    <div 
+                      className="absolute inset-0 flex items-center px-3 cursor-pointer"
+                      onClick={() => (document.getElementById('mobile-diary-end-date') as HTMLInputElement)?.showPicker()}
+                    >
                       <span className="text-sm font-medium text-gray-500">End date</span>
                     </div>
                   )}
@@ -652,7 +659,10 @@ export default function PatientDetailsMobile({
                     max={dateRangeEnd || undefined}
                   />
                   {!dateRangeStart && (
-                    <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                    <div 
+                      className="absolute inset-0 flex items-center px-3 cursor-pointer"
+                      onClick={() => (document.getElementById('mobile-notes-start-date') as HTMLInputElement)?.showPicker()}
+                    >
                       <span className="text-sm font-medium text-gray-500">Start date</span>
                     </div>
                   )}
@@ -667,7 +677,10 @@ export default function PatientDetailsMobile({
                     min={dateRangeStart || undefined}
                   />
                   {!dateRangeEnd && (
-                    <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                    <div 
+                      className="absolute inset-0 flex items-center px-3 cursor-pointer"
+                      onClick={() => (document.getElementById('mobile-notes-end-date') as HTMLInputElement)?.showPicker()}
+                    >
                       <span className="text-sm font-medium text-gray-500">End date</span>
                     </div>
                   )}
@@ -1235,13 +1248,12 @@ export default function PatientDetailsMobile({
               </div>
 
               <div className="flex-1 overflow-y-auto">
-                <GenerateReport
+                <DetailedReportModal
                   patient={patient}
                   diaryEntries={diaryEntries}
                   symptoms={symptoms}
                   medications={medications}
                   moodEntries={moodEntries}
-                  type="detailed"
                   onClose={() => setShowDetailsModal(false)}
                 />
               </div>

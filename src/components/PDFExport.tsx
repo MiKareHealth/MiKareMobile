@@ -148,13 +148,9 @@ const PatientPDF: React.FC<PDFExportProps & { aiQuestions: {date: string; text: 
   type,
   aiQuestions,
 }) => {
-  const summaryEntries = diaryEntries
-    .filter(
-      (e) =>
-        e.entry_type !== 'AI' ||
-        (e.entry_type === 'AI' && e.ai_type === 'questions')
-    )
-    .slice(-5);
+  // Filter out AI entries completely for both summary and detailed reports
+  const nonAiEntries = diaryEntries.filter(e => e.entry_type !== 'AI');
+  const summaryEntries = nonAiEntries.slice(-5);
 
   return (
     <Document>
@@ -207,8 +203,8 @@ const PatientPDF: React.FC<PDFExportProps & { aiQuestions: {date: string; text: 
           <View style={styles.section}>
             <Text style={styles.title}>Diary Summary</Text>
             <Text style={styles.entryText}>
-              {diaryEntries.length > 0 
-                ? `Patient has ${diaryEntries.length} diary entries covering ${diaryEntries.length > 0 ? new Date(diaryEntries[0].date).toLocaleDateString() : ''} to ${diaryEntries.length > 0 ? new Date(diaryEntries[diaryEntries.length - 1].date).toLocaleDateString() : ''}. Recent entries include ${summaryEntries.slice(0, 3).map(e => e.entry_type).join(', ')}.`
+              {nonAiEntries.length > 0 
+                ? `Patient has ${nonAiEntries.length} diary entries covering ${nonAiEntries.length > 0 ? new Date(nonAiEntries[0].date).toLocaleDateString() : ''} to ${nonAiEntries.length > 0 ? new Date(nonAiEntries[nonAiEntries.length - 1].date).toLocaleDateString() : ''}. Recent entries include ${summaryEntries.slice(0, 3).map(e => e.entry_type).join(', ')}.`
                 : 'No diary entries recorded.'
               }
               {moodEntries.length > 0 && ` Patient has logged ${moodEntries.length} mood entries with an average mood score of ${(moodEntries.reduce((sum, m) => sum + m.mood, 0) / moodEntries.length).toFixed(1)}/10.`}
@@ -426,8 +422,8 @@ const PatientPDF: React.FC<PDFExportProps & { aiQuestions: {date: string; text: 
           {/* Diary Timeline */}
           <View style={styles.section}>
             <Text style={styles.title}>Diary Timeline</Text>
-            {diaryEntries.length > 0 ? (
-              diaryEntries.map((e, i) => (
+            {nonAiEntries.length > 0 ? (
+              nonAiEntries.map((e, i) => (
                 <View key={i} style={styles.entry}>
                   <Text style={styles.entryTitle}>{e.title}</Text>
                   <Text style={styles.entryText}>Type: {e.entry_type}</Text>
@@ -481,17 +477,21 @@ export const GenerateReport = ({
   medications,
   moodEntries,
   type,
-  onClose
-}: PDFExportProps & { onClose?: () => void }) => {
+  onClose,
+  isCustomRangeValid = true,
+  shouldGenerate = true
+}: PDFExportProps & { onClose?: () => void; isCustomRangeValid?: boolean; shouldGenerate?: boolean }) => {
   const [aiQuestions, setAiQuestions] = useState<{date: string; text: string}[]>([]);
   const [diarySummary, setDiarySummary] = useState<string>('');
   const [symptomsSummary, setSymptomsSummary] = useState<string>('');
-  const [loadingQuestions, setLoadingQuestions] = useState<boolean>(true);
+  const [loadingQuestions, setLoadingQuestions] = useState<boolean>(shouldGenerate);
   const [generatingPDF, setGeneratingPDF] = useState<boolean>(false);
-  const [ready, setReady] = useState<boolean>(false);
+  const [ready, setReady] = useState<boolean>(!shouldGenerate);
 
   // Generate questions when the component mounts
   React.useEffect(() => {
+    if (!shouldGenerate) return;
+    
     const generateQuestions = async () => {
       setLoadingQuestions(true);
       
@@ -506,7 +506,7 @@ export const GenerateReport = ({
               endDate: s.end_date,
               notes: s.notes
             })),
-            diaryEntries: diaryEntries.map(e => ({
+            diaryEntries: diaryEntries.filter(e => e.entry_type !== 'AI').map(e => ({
               type: e.entry_type,
               title: e.title,
               date: e.date,
@@ -662,23 +662,32 @@ export const GenerateReport = ({
           Cancel
         </button>
         
-        <PDFDownloadLink
-          document={
-            <PatientPDF
-              patient={patient}
-              diaryEntries={diaryEntries}
-              symptoms={symptoms}
-              medications={medications}
-              moodEntries={moodEntries}
-              type={type}
-              aiQuestions={aiQuestions}
-            />
-          }
-          fileName={filename}
-          className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700"
-        >
-          Download PDF
-        </PDFDownloadLink>
+        {isCustomRangeValid ? (
+          <PDFDownloadLink
+            document={
+              <PatientPDF
+                patient={patient}
+                diaryEntries={diaryEntries}
+                symptoms={symptoms}
+                medications={medications}
+                moodEntries={moodEntries}
+                type={type}
+                aiQuestions={aiQuestions}
+              />
+            }
+            fileName={filename}
+            className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700"
+          >
+            Download PDF
+          </PDFDownloadLink>
+        ) : (
+          <button
+            disabled
+            className="px-4 py-2 bg-gray-300 text-gray-500 rounded-md cursor-not-allowed"
+          >
+            Download PDF
+          </button>
+        )}
       </div>
     </div>
   );
