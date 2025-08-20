@@ -24,7 +24,7 @@ export default function DiaryEntry({ isOpen, onClose, patientId, onSuccess }: Di
   const [severity, setSeverity] = useState('');
   const [attendees, setAttendees] = useState<string[]>([]);
   const [newAttendee, setNewAttendee] = useState('');
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   
   // Audio recording states
   const [isRecording, setIsRecording] = useState(false);
@@ -45,7 +45,7 @@ export default function DiaryEntry({ isOpen, onClose, patientId, onSuccess }: Di
       setSeverity('');
       setAttendees([]);
       setNewAttendee('');
-      setFile(null);
+      setFiles([]);
       setError(null);
       setAudioBlob(null);
       setTranscriptionError(null);
@@ -65,22 +65,34 @@ export default function DiaryEntry({ isOpen, onClose, patientId, onSuccess }: Di
     try {
       let fileUrl = null;
 
-      if (file) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${patientId}/${Date.now()}.${fileExt}`;
+      // Upload all files if they exist
+      const uploadedFiles: Array<{fileName: string, originalName: string, fileUrl: string}> = [];
+      
+      if (files.length > 0) {
+        for (const file of files) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${patientId}/${Date.now()}-${file.name}`;
 
-        const supabase = await getSupabaseClient();
-        const { error: uploadError } = await supabase.storage
-          .from('patient-documents')
-          .upload(fileName, file);
+          const supabase = await getSupabaseClient();
+          const { error: uploadError } = await supabase.storage
+            .from('patient-documents')
+            .upload(fileName, file);
 
-        if (uploadError) throw uploadError;
+          if (uploadError) throw uploadError;
 
-        const { data: { publicUrl } } = await supabase.storage
-          .from('patient-documents')
-          .getPublicUrl(fileName);
+          const { data: { publicUrl } } = await supabase.storage
+            .from('patient-documents')
+            .getPublicUrl(fileName);
 
-        fileUrl = publicUrl;
+          uploadedFiles.push({
+            fileName,
+            originalName: file.name,
+            fileUrl: publicUrl
+          });
+        }
+        
+        // For backward compatibility, use the first file URL as the main file_url
+        fileUrl = uploadedFiles[0].fileUrl;
       }
 
       const supabase = await getSupabaseClient();
@@ -367,10 +379,12 @@ export default function DiaryEntry({ isOpen, onClose, patientId, onSuccess }: Di
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Attach File</label>
+            <label className="block text-sm font-medium text-gray-700">Attach Files</label>
             <input
               type="file"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              onChange={(e) => setFiles(Array.from(e.target.files || []))}
+              multiple
+              accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.mp3,.wav,.m4a"
               className="mt-1 block w-full text-sm text-gray-500
                 file:mr-4 file:py-2 file:px-4
                 file:rounded-md file:border-0
@@ -378,6 +392,27 @@ export default function DiaryEntry({ isOpen, onClose, patientId, onSuccess }: Di
                 file:bg-indigo-50 file:text-indigo-700
                 hover:file:bg-indigo-100"
             />
+            {files.length > 0 && (
+              <div className="mt-2 space-y-2">
+                <p className="text-xs font-medium text-gray-700">Selected files ({files.length}):</p>
+                <div className="flex flex-wrap gap-2">
+                  {files.map((file, index) => (
+                    <div key={index} className="flex items-center bg-gray-50 text-gray-700 px-3 py-1 rounded-md text-xs font-medium border border-gray-200">
+                      <span className="truncate max-w-32">{file.name}</span>
+                      <span className="ml-2 text-xs text-gray-500">({Math.round(file.size / 1024)} KB)</span>
+                      <button
+                        type="button"
+                        onClick={() => setFiles(files.filter((_, i) => i !== index))}
+                        className="ml-2 text-red-500 hover:text-red-600 transition-colors"
+                        title="Remove file"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {error && (

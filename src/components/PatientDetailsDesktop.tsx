@@ -897,7 +897,7 @@ export default function PatientDetailsDesktop({
                       <p className="mt-1">{formatDate(patient.dob)}</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Gender</label>
+                      <label className="block text-sm font-medium text-gray-700">Birth sex</label>
                       <p className="mt-1">{patient.gender}</p>
                     </div>
                     <div>

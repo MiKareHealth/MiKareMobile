@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { getSupabaseClient } from '../lib/supabaseClient';
 import type { Patient } from '../types/database';
 
@@ -17,75 +17,80 @@ interface PatientsContextType {
 
 const PatientsContext = createContext<PatientsContextType | undefined>(undefined);
 
-export const PatientsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export function PatientsProvider({ children }: { children: React.ReactNode }) {
   const [patients, setPatients] = useState<PatientSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isInitialized, setIsInitialized] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const patientsRef = useRef<PatientSummary[]>([]);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    patientsRef.current = patients;
+  }, [patients]);
 
   const fetchPatients = useCallback(async () => {
-    console.log('[PatientsContext] fetchPatients: starting...');
-    setLoading(true);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[PatientsContext] fetchPatients: starting...');
+    }
     try {
+      setLoading(true);
       const supabase = await getSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
       
-      // Wait for authentication
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError) {
-        console.error('[PatientsContext] fetchPatients: user error', userError);
-        setPatients([]);
-        setLoading(false);
-        return;
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[PatientsContext] fetchPatients: user', user?.email, 'id:', user?.id);
       }
-      
-      console.log('[PatientsContext] fetchPatients: user', user?.email, 'id:', user?.id);
       
       if (!user) {
-        console.log('[PatientsContext] fetchPatients: no user, clearing patients');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[PatientsContext] fetchPatients: no user, clearing patients');
+        }
         setPatients([]);
         setLoading(false);
         return;
       }
 
-      // Additional check: ensure we have a valid session
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        console.log('[PatientsContext] fetchPatients: no active session, waiting...');
-        setPatients([]);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[PatientsContext] fetchPatients: no active session, waiting...');
+        }
         setLoading(false);
         return;
       }
 
-      // Test the query with explicit user_id filter
-      console.log('[PatientsContext] fetchPatients: querying patients for user_id:', user.id);
-      
-      // Only fetch minimal fields
-      const { data: patientsData, error } = await supabase
-        .from('patients')
-        .select('id, full_name, photo_url, relationship')
-        .eq('user_id', user.id) // Explicitly filter by user_id
-        .order('created_at', { ascending: false });
-        
-      if (error) {
-        console.error('[PatientsContext] fetchPatients: error', error);
-        throw error;
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[PatientsContext] fetchPatients: querying patients for user_id:', user.id);
       }
       
-      console.log('[PatientsContext] fetchPatients: patientsData', patientsData);
-      console.log('[PatientsContext] fetchPatients: found', patientsData?.length || 0, 'patients');
+      const { data: patientsData, error } = await supabase
+        .from('patients')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[PatientsContext] fetchPatients: patientsData', patientsData);
+        console.log('[PatientsContext] fetchPatients: found', patientsData?.length || 0, 'patients');
+      }
+      
       setPatients(patientsData || []);
-    } catch (err) {
-      console.error('[PatientsContext] fetchPatients: catch', err);
+    } catch (error) {
+      console.error('[PatientsContext] fetchPatients: error', error);
       setPatients([]);
     } finally {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[PatientsContext] fetchPatients: completed, loading set to false');
+      }
       setLoading(false);
-      setIsInitialized(true);
-      console.log('[PatientsContext] fetchPatients: completed, loading set to false');
     }
-  }, []);
+  }, []); // Empty dependency array since this function doesn't depend on any state
 
-  // Initial fetch and auth state listener
+  // Initial fetch and auth state listener - only run once on mount
   useEffect(() => {
     console.log('[PatientsContext] useEffect: setting up auth listener');
     
@@ -122,12 +127,16 @@ export const PatientsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         
         // Set up auth state change listener
         authListener = supabase.auth.onAuthStateChange(async (event: string, session: any) => {
-          console.log('[PatientsContext] Auth state changed:', event, 'user:', session?.user?.email);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[PatientsContext] Auth state changed:', event, 'user:', session?.user?.email);
+          }
           
           if (!isMounted) return;
           
           if (event === 'SIGNED_IN' && session?.user) {
-            console.log('[PatientsContext] User signed in, waiting for auth to be fully established...');
+            if (process.env.NODE_ENV === 'development') {
+              console.log('[PatientsContext] User signed in, waiting for auth to be fully established...');
+            }
             // Clear patients first to ensure clean state
             setPatients([]);
             setLoading(true);
@@ -140,13 +149,17 @@ export const PatientsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               if (!isMounted) return;
               
               try {
-                console.log('[PatientsContext] Attempting to fetch patients, retry:', retryCount);
+                if (process.env.NODE_ENV === 'development') {
+                  console.log('[PatientsContext] Attempting to fetch patients, retry:', retryCount);
+                }
                 await fetchPatients();
               } catch (error) {
                 console.error('[PatientsContext] Fetch attempt failed:', error);
                 retryCount++;
                 if (retryCount < maxRetries && isMounted) {
-                  console.log('[PatientsContext] Retrying in 1 second...');
+                  if (process.env.NODE_ENV === 'development') {
+                    console.log('[PatientsContext] Retrying in 1 second...');
+                  }
                   setTimeout(attemptFetch, 1000);
                 } else if (isMounted) {
                   console.error('[PatientsContext] Max retries reached, giving up');
@@ -158,20 +171,28 @@ export const PatientsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             // Initial delay before first attempt
             setTimeout(attemptFetch, 1000);
           } else if (event === 'SIGNED_OUT') {
-            console.log('[PatientsContext] User signed out, clearing patients');
+            if (process.env.NODE_ENV === 'development') {
+              console.log('[PatientsContext] User signed out, clearing patients');
+            }
             setPatients([]);
             setLoading(false);
           } else if (event === 'TOKEN_REFRESHED') {
-            console.log('[PatientsContext] Token refreshed, checking if we need to refetch patients');
+            if (process.env.NODE_ENV === 'development') {
+              console.log('[PatientsContext] Token refreshed, checking if we need to refetch patients');
+            }
             // Only refetch if we don't have patients and user is authenticated
-            if (isMounted && patients.length === 0 && session?.user) {
-              console.log('[PatientsContext] Refetching patients after token refresh');
+            if (isMounted && patientsRef.current.length === 0 && session?.user) {
+              if (process.env.NODE_ENV === 'development') {
+                console.log('[PatientsContext] Refetching patients after token refresh');
+              }
               fetchPatients();
             }
           }
         });
         
-        console.log('[PatientsContext] Auth listener set up successfully');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[PatientsContext] Auth listener set up successfully');
+        }
       } catch (err) {
         console.error('[PatientsContext] Error setting up auth listener:', err);
         if (isMounted) {
@@ -190,7 +211,7 @@ export const PatientsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         authListener.subscription.unsubscribe();
       }
     };
-  }, [fetchPatients]);
+  }, []); // Remove fetchPatients dependency to prevent infinite loop
 
   // Listen for region changes and re-fetch patients if needed
   useEffect(() => {
@@ -226,7 +247,7 @@ export const PatientsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       isMounted = false;
       if (interval) clearInterval(interval);
     };
-  }, [fetchPatients, authChecked]);
+  }, [authChecked]); // Remove fetchPatients dependency
 
   // Fallback mechanism: if we're authenticated but have no patients after a delay, try to fetch again
   useEffect(() => {
@@ -257,23 +278,20 @@ export const PatientsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             retryTimeout = setTimeout(fallbackFetch, 2000);
           }
         }
-      } else if (isMounted && retryCount < maxRetries) {
-        // If no user or still loading, retry after a delay
-        retryCount++;
+      } else if (isMounted && !user) {
         console.log('[PatientsContext] Fallback: no user or still loading, retrying in 2 seconds...');
         retryTimeout = setTimeout(fallbackFetch, 2000);
       }
     };
-    
-    // Wait 3 seconds after auth is checked, then try to fetch if we still have no patients
-    timeout = setTimeout(fallbackFetch, 3000);
-    
+
+    timeout = setTimeout(fallbackFetch, 2000); // Wait 2 seconds before first fallback attempt
+
     return () => {
       isMounted = false;
       if (timeout) clearTimeout(timeout);
       if (retryTimeout) clearTimeout(retryTimeout);
     };
-  }, [authChecked, patients.length, loading, fetchPatients]);
+  }, [authChecked, patients.length, loading]); // Remove fetchPatients dependency
 
   const addPatient = (patient: PatientSummary) => {
     setPatients((prev) => [patient, ...prev]);
@@ -287,75 +305,6 @@ export const PatientsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setPatients((prev) => prev.filter((p) => p.id !== patientId));
   };
 
-  // Test function to verify authentication and database access
-  const testAuthAndDatabase = async () => {
-    console.log('[PatientsContext] Testing auth and database access...');
-    try {
-      const supabase = await getSupabaseClient();
-      
-      // Test 1: Check authentication
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      console.log('[PatientsContext] Test 1 - Auth check:', { user: user?.email, error: userError });
-      
-      if (!user) {
-        console.log('[PatientsContext] Test failed: No authenticated user');
-        return;
-      }
-      
-      // Test 2: Check session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      console.log('[PatientsContext] Test 2 - Session check:', { 
-        hasSession: !!session, 
-        error: sessionError,
-        sessionUser: session?.user?.email 
-      });
-      
-      // Test 3: Check if we can query the patients table
-      const { data: testData, error: testError } = await supabase
-        .from('patients')
-        .select('id, full_name')
-        .eq('user_id', user.id);
-      
-      console.log('[PatientsContext] Test 3 - Database access:', { 
-        count: testData?.length || 0, 
-        error: testError,
-        data: testData 
-      });
-      
-      // Test 4: Check RLS policies by trying to query without user_id filter
-      const { data: allData, error: allError } = await supabase
-        .from('patients')
-        .select('id, user_id, full_name')
-        .limit(5);
-      
-      console.log('[PatientsContext] Test 4 - RLS test:', { 
-        count: allData?.length || 0, 
-        error: allError,
-        data: allData 
-      });
-      
-    } catch (err) {
-      console.error('[PatientsContext] Test failed:', err);
-    }
-  };
-
-  // Run test on mount in development
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      testAuthAndDatabase();
-    }
-  }, []);
-
-  // Debug function to manually trigger patient fetch
-  const debugFetchPatients = async () => {
-    console.log('[PatientsContext] Debug fetch triggered');
-    try {
-      await fetchPatients();
-    } catch (error) {
-      console.error('[PatientsContext] Debug fetch failed:', error);
-    }
-  };
-
   return (
     <PatientsContext.Provider
       value={{ 
@@ -364,8 +313,7 @@ export const PatientsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         refreshPatients: fetchPatients, 
         addPatient, 
         updatePatient, 
-        removePatient,
-        debugFetchPatients // Only available in development
+        removePatient
       }}
     >
       {children}

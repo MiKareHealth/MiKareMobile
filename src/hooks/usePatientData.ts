@@ -112,12 +112,6 @@ export function usePatientData(patientId: string) {
           
         if (moodEntriesData) {
           setMoodEntries(moodEntriesData || []);
-          
-          // Find today's mood entry based on the user's timezone
-          const todayEntry = moodEntriesData.find(entry => 
-            isToday(entry.date, preferences.timezone)
-          );
-          setTodaysMood(todayEntry || null);
         }
       }
     } catch (err) {
@@ -127,9 +121,21 @@ export function usePatientData(patientId: string) {
     }
   };
 
+  // Calculate today's mood entry separately to avoid refetching all data when timezone changes
+  useEffect(() => {
+    if (moodEntries.length > 0) {
+      const todayEntry = moodEntries.find(entry => 
+        isToday(entry.date, preferences.timezone)
+      );
+      setTodaysMood(todayEntry || null);
+    } else {
+      setTodaysMood(null);
+    }
+  }, [moodEntries, preferences.timezone]);
+
   useEffect(() => {
     fetchData();
-  }, [patientId, preferences.timezone]);
+  }, [patientId]); // Remove preferences.timezone dependency to prevent unnecessary refetches
 
   return {
     user,

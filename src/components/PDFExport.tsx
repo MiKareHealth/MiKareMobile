@@ -185,7 +185,7 @@ const PatientPDF: React.FC<PDFExportProps & { aiQuestions: {date: string; text: 
                 <Text style={styles.value}>{new Date(patient.dob).toLocaleDateString()}</Text>
               </View>
               <View style={styles.col}>
-                <Text style={styles.label}>Gender:</Text>
+                <Text style={styles.label}>Birth sex:</Text>
                 <Text style={styles.value}>{patient.gender}</Text>
               </View>
               <View style={styles.col}>

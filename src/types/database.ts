@@ -106,6 +106,18 @@ export type UserSession = {
   created_at: string;
 };
 
+export type AuditEvent = {
+  id: number;
+  user_id: string;
+  event_type: 'login' | 'logout' | 'password_change' | 'patient_add' | 'patient_delete' | 'profile_update' | 'subscription_update';
+  event_at: string;
+  ip: string | null;
+  user_agent: string | null;
+  region: string | null;
+  success: boolean;
+  context: Record<string, any>;
+};
+
 export type MoodEntry = {
   id: string;
   profile_id: string;
@@ -135,4 +147,51 @@ export type Profile = {
   preferred_session_length?: number;
   region?: string;
   updated_at: string;
+};
+
+export type ConciergeIntent = 
+  | 'ADD_SYMPTOM' 
+  | 'ADD_MEDICATION' 
+  | 'ADD_APPOINTMENT' 
+  | 'ADD_NOTE' 
+  | 'ADD_MOOD' 
+  | 'ADD_SLEEP'
+  | 'QUERY_DATA'
+  | 'UNKNOWN';
+
+export type ConciergeResult = 'opened' | 'failed' | 'cancelled';
+
+export type ConciergeEvent = {
+  id: string;
+  user_id: string;
+  occurred_at: string;
+  intent: ConciergeIntent;
+  confidence: number;
+  route: string;
+  result: ConciergeResult;
+  meta: Record<string, any>;
+};
+
+export type ConciergePrefs = {
+  user_id: string;
+  enabled: boolean;
+  nudge_opt_in: boolean;
+  updated_at: string;
+};
+
+export type ChatMessage = {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+  intent?: ConciergeIntent;
+  confidence?: number;
+  meta?: Record<string, any>;
+};
+
+export type IntentDetectionResult = {
+  intent: ConciergeIntent;
+  confidence: number;
+  slots: Record<string, any>;
+  route: string;
 };

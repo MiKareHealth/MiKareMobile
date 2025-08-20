@@ -104,6 +104,8 @@ export default function AddPatient() {
         notes: formData.get('notes') as string,
       };
 
+      console.log('🔍 ADD PATIENT: About to insert patient:', patientData.full_name);
+      
       const { data: inserted, error: insertError } = await supabaseClient
         .from('patients')
         .insert(patientData)
@@ -111,11 +113,14 @@ export default function AddPatient() {
         .single();
 
       if (insertError) {
+        console.error('🔍 ADD PATIENT: Error inserting patient:', insertError);
         logError('Error inserting patient:', insertError);
         throw insertError;
       }
       const patientId = inserted?.id;
       if (!patientId) throw new Error('Failed to get new patient ID');
+      
+      console.log('🔍 ADD PATIENT: Patient created successfully with ID:', patientId);
 
       // Ensure patient record is visible to RLS
       let rlsVisible = false;
@@ -327,7 +332,7 @@ export default function AddPatient() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Gender
+                    Birth sex
                   </label>
                   <div className="mt-1">
                     <select

@@ -1,6 +1,4 @@
 ---
-description: 
-globs: 
 alwaysApply: false
 ---
 This guide defines a reusable, region-aware Stripe integration architecture leveraging Supabase Functions and robust webhook handling to manage subscription plans and statuses across multiple regional Supabase instances and streamline troubleshooting.

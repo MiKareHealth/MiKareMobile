@@ -1,4 +1,102 @@
+---
+alwaysApply: false
+---
+
 BACKEND ARCHITECTURE
+
+Overview
+
+Never delete from the database.  Any offer to delete should be a prompt with code to copy/paste. 
+
+The backend uses Supabase as the primary data platform, offering PostgreSQL storage, authentication, file storage, and serverless functions.
+
+Business logic is split between database-level (RLS policies, triggers) and edge functions for AI pipelines and session management.
+
+Supabase Services
+
+PostgreSQL Database
+
+Tables: users, patients, profiles, diary_entries, documents, symptom_entries, medications, mood_entries, user_sessions
+
+Enums for controlled values (e.g. entry_type, gender, status)
+
+Timestamps and audit fields (created_at, updated_at)
+
+Authentication
+
+Supabase Auth with email/password, Google, Microsoft providers
+
+JWT tokens containing user_id and organisation_id claims
+
+Row-Level Security enforcing per-tenant data access
+
+Storage
+
+Buckets: patient-photos, documents, audio-recordings
+
+Files stored by path; URLs retrieved via getPublicUrl or createSignedUrl
+
+Functions
+
+AI processing pipeline: triggered on insert to documents or audio-recordings, calls Whisper and GPT APIs, writes back summaries and insights
+
+Session management: record login/logout in user_sessions, enforce timeout
+
+Data Model
+
+users: id, email, full_name, timezone, time_format, preferred_session_length, onboard_complete, show_splash
+
+patients/profiles: id, user_id, full_name, dob, gender, relationship, country, address, phone_number, photo_url
+
+diary_entries: id, profile_id, entry_type, title, date, notes, severity, attendees, file_url
+
+documents: id, profile_id, diary_entry_id, file_url, type, uploaded_at
+
+symptom_entries: id, profile_id, description, start_date, end_date, severity, notes
+
+medications: id, profile_id, medication_name, start_date, end_date, dosage, status, prescribed_by, notes
+
+mood_entries: id, profile_id, date, body, mind, sleep, mood, created_at
+
+user_sessions: id, user_id, login_time, logout_time, session_length_minutes
+
+Security & Compliance
+
+TLS encryption in transit and AES-256 at rest
+
+RLS policies on every table scoped by user_id or organisation_id
+
+GDPR/HIPAA compliant data retention and export capabilities
+
+AI Integration
+
+Transcription: Supabase function pulls audio, calls Whisper, writes transcript_text
+
+Summarisation & Insights: on new transcript or document, function calls GPT, writes summary_text and ai_suggestions
+
+Queued processing using Supabase realtime or scheduled cron functions
+
+API Layer
+
+Supabase auto-generated REST and GraphQL endpoints for all tables
+
+Custom edge functions for complex operations (batch inserts, exports, session renewal)
+
+Secure invocation via service role key or user JWT
+
+Export Service
+
+Edge function to compile PDF/JSON bundle: fetch related tables by profile_id and assemble into a single package
+
+Stored temporarily in exports bucket and a record in exports table
+
+Monitoring & Logging
+
+Use Supabase logging for function invocations and errors
+
+Custom audit logs via triggers on sensitive tables (e.g., patient, document)
+
+This backend architecture leverages Supabase’s integrated services for rapid development, robust security, and seamless AI integration, all under a tenant-aware, RLS-enforced model.BACKEND ARCHITECTURE
 
 Overview
 

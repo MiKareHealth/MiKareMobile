@@ -36,6 +36,8 @@ import { useSubscription } from '../hooks/useSubscription';
 import { usePatients, PatientSummary } from '../contexts/PatientsContext';
 import type { PlanKey } from '../config/pricing';
 import { error as logError } from '../utils/logger';
+import { logLogoutEvent, testAuditTable, maskIPForDisplay } from '../utils/auditUtils';
+import { useAuditEvents } from '../hooks/useAuditEvents';
 
 // Define timezone options
 const timezoneOptions = [
@@ -112,6 +114,7 @@ export default function Settings() {
   const [timezone, setTimezone] = useState(preferences.timezone);
   const { patients, loading: patientsLoading } = usePatients();
   const [sharedPatients, setSharedPatients] = useState<any[]>([]);
+  const { auditEvents, loading: auditLoading } = useAuditEvents(5);
 
   // Get browser's timezone as default
   const getBrowserTimezone = () => {
@@ -326,6 +329,13 @@ export default function Settings() {
       const supabase = await getSupabaseClient();
       if (!supabase) throw new Error('Failed to initialize Supabase client');
 
+      // Log logout audit event (non-blocking) - use the same client instance
+      if (user?.id) {
+        logLogoutEvent(user.id, supabase).catch((err) => {
+          logError('Failed to log logout audit event:', err);
+        });
+      }
+
       await supabase.auth.signOut();
       navigate('/signin');
     } catch (err) {
@@ -408,6 +418,11 @@ export default function Settings() {
     setShowSplash(true);
     
     showSuccessMessage('Showing introduction tutorial');
+  };
+
+  const handleTestAuditTable = async () => {
+    console.log('🔍 SETTINGS: Testing audit table...');
+    await testAuditTable();
   };
 
   const handleSubscribe = async (planKey: PlanKey) => {
@@ -556,64 +571,63 @@ export default function Settings() {
               </div>
             </div>
             
-            {/* Session History - Now always visible and expanded */}
+            {/* Recent Logins */}
             <div className="mt-6 bg-gray-50 rounded-lg p-4">
               <h3 className="text-sm font-medium text-gray-800 mb-3 flex items-center">
                 <History className="h-4 w-4 mr-2 text-gray-600" />
-                Recent Login Sessions
+                Recent Logins
               </h3>
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead>
                     <tr className="bg-gray-100">
-                      <th className="px-4 py-2 text-left font-medium text-gray-600">Login Time</th>
-                      <th className="px-4 py-2 text-left font-medium text-gray-600">Logout Time</th>
-                      <th className="px-4 py-2 text-left font-medium text-gray-600">Duration</th>
-                      <th className="px-4 py-2 text-left font-medium text-gray-600">Status</th>
-                      <th className="px-4 py-2 text-left font-medium text-gray-600">Action</th>
+                      <th className="px-4 py-2 text-left font-medium text-gray-600">Date & Time</th>
+                      <th className="px-4 py-2 text-left font-medium text-gray-600">Device</th>
+                      <th className="px-4 py-2 text-left font-medium text-gray-600">IP Address</th>
+                      <th className="px-4 py-2 text-left font-medium text-gray-600">Region</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {userSessions.map((session) => (
-                      <tr key={session.id}>
-                        <td className="px-4 py-2 whitespace-nowrap">
-                          {formatDateTime(session.login_time)}
-                        </td>
-                        <td className="px-4 py-2 whitespace-nowrap">
-                          {session.logout_time 
-                            ? formatDateTime(session.logout_time)
-                            : '—'}
-                        </td>
-                        <td className="px-4 py-2 whitespace-nowrap">
-                          {session.session_length_minutes} minutes
-                        </td>
-                        <td className="px-4 py-2 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            session.is_active
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-gray-100 text-gray-800'
-                          }`}>
-                            {session.is_active ? 'Active' : 'Ended'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2 whitespace-nowrap">
-                          {session.is_active && (
-                            <button
-                              type="button"
-                              onClick={() => handleTerminateSession(session.id)}
-                              className="text-red-600 hover:text-red-800 text-xs flex items-center"
-                            >
-                              <LogOut className="h-3 w-3 mr-1" />
-                              End Session
-                            </button>
-                          )}
+                    {auditLoading ? (
+                      <tr>
+                        <td colSpan={4} className="px-4 py-4 text-center text-gray-500">
+                          <div className="animate-spin h-4 w-4 mx-auto"></div>
+                          Loading...
                         </td>
                       </tr>
-                    ))}
-                    {userSessions.length === 0 && (
+                    ) : auditEvents.length > 0 ? (
+                      auditEvents.map((event) => (
+                        <tr key={event.id}>
+                          <td className="px-4 py-2 whitespace-nowrap">
+                            {formatDateTime(event.event_at)}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap">
+                            <span className="text-gray-600" title={event.user_agent || 'Unknown device'}>
+                              {event.user_agent ? 
+                                (event.user_agent.length > 40 ? 
+                                  `${event.user_agent.substring(0, 40)}...` : 
+                                  event.user_agent
+                                ) : 
+                                'Unknown device'
+                              }
+                            </span>
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap">
+                            <span className="text-gray-600">
+                              {maskIPForDisplay(event.ip)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap">
+                            <span className="text-gray-600">
+                              {event.region || '—'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
                       <tr>
-                        <td colSpan={5} className="px-4 py-4 text-center text-gray-500">
-                          No recent session history available
+                        <td colSpan={4} className="px-4 py-4 text-center text-gray-500">
+                          No recent logins recorded yet.
                         </td>
                       </tr>
                     )}
@@ -898,6 +912,15 @@ export default function Settings() {
               >
                 <Download className="h-4 w-4 mr-2" />
                 Download My Data
+              </button>
+              
+              <button
+                type="button"
+                onClick={handleTestAuditTable}
+                className="w-full sm:w-auto flex items-center justify-center px-4 py-2 border border-blue-300 shadow-sm text-sm font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50 transition-colors"
+              >
+                <History className="h-4 w-4 mr-2" />
+                Test Audit Table
               </button>
               
               <button

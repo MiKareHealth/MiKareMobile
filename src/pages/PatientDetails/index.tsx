@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getSupabaseClient } from '../../lib/supabaseClient';
@@ -40,37 +40,43 @@ export default function PatientDetails() {
   
   const { patient, documents, symptoms, diaryEntries, medications, moodEntries, todaysMood, loading, error, refresh } = usePatientData(id!);
 
-  // Filter diary entries based on date range and search term
-  const filteredDiaryEntries = diaryEntries.filter(entry => {
-    // Date range filtering
-    if (dateRangeStart && new Date(entry.date) < new Date(dateRangeStart)) {
-      return false;
-    }
-    if (dateRangeEnd && new Date(entry.date) > new Date(dateRangeEnd)) {
-      return false;
-    }
-    
-    // Search term filtering (minimum 3 characters)
-    if (searchTerm.length >= 3) {
-      const searchLower = searchTerm.toLowerCase();
-      const titleMatch = entry.title?.toLowerCase().includes(searchLower);
-      const notesMatch = entry.notes?.toLowerCase().includes(searchLower);
-      const typeMatch = entry.entry_type?.toLowerCase().includes(searchLower);
-      const attendeesMatch = entry.attendees?.some(attendee => 
-        attendee.toLowerCase().includes(searchLower)
-      );
-      
-      if (!titleMatch && !notesMatch && !typeMatch && !attendeesMatch) {
+  // Memoize filtered diary entries to prevent unnecessary recalculations
+  const filteredDiaryEntries = useMemo(() => {
+    return diaryEntries.filter(entry => {
+      // Date range filtering
+      if (dateRangeStart && new Date(entry.date) < new Date(dateRangeStart)) {
         return false;
       }
-    }
-    
-    return true;
-  });
+      if (dateRangeEnd && new Date(entry.date) > new Date(dateRangeEnd)) {
+        return false;
+      }
+      
+      // Search term filtering (minimum 3 characters)
+      if (searchTerm.length >= 3) {
+        const searchLower = searchTerm.toLowerCase();
+        const titleMatch = entry.title?.toLowerCase().includes(searchLower);
+        const notesMatch = entry.notes?.toLowerCase().includes(searchLower);
+        const typeMatch = entry.entry_type?.toLowerCase().includes(searchLower);
+        const attendeesMatch = entry.attendees?.some(attendee => 
+          attendee.toLowerCase().includes(searchLower)
+        );
+        
+        if (!titleMatch && !notesMatch && !typeMatch && !attendeesMatch) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+  }, [diaryEntries, dateRangeStart, dateRangeEnd, searchTerm]);
 
-  // Debug logging for date filtering
-  log('Date range:', { dateRangeStart, dateRangeEnd });
-  log('Filtered entries count:', filteredDiaryEntries.length, 'of', diaryEntries.length);
+  // Only log when values actually change (for debugging)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      log('Date range:', { dateRangeStart, dateRangeEnd });
+      log('Filtered entries count:', filteredDiaryEntries.length, 'of', diaryEntries.length);
+    }
+  }, [dateRangeStart, dateRangeEnd, filteredDiaryEntries.length, diaryEntries.length]);
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);

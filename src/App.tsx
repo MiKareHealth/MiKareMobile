@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { User } from '@supabase/supabase-js';
 import { getSupabaseClient, getCurrentRegion, initializeSupabase, setGlobalSupabaseInstance } from './lib/supabaseClient';
 import { log, error as logError } from './utils/logger';
+import { logLogoutEvent } from './utils/auditUtils';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import Onboarding from './pages/Onboarding';
@@ -182,6 +183,17 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
       } else if (event === 'SIGNED_OUT') {
         // Just clear the user - don't call signOut() again to avoid loops
         log('User signed out');
+        
+        // Log logout audit event (non-blocking) - use the current client instance
+        if (session?.user?.id) {
+          console.log('🔍 APP LOGOUT: About to log logout audit event for user:', session.user.id);
+          console.log('🔍 APP LOGOUT: Client instance:', !!supabaseClient);
+          logLogoutEvent(session.user.id, supabaseClient).catch((err) => {
+            console.error('🔍 APP LOGOUT: Failed to log logout audit event:', err);
+            logError('Failed to log logout audit event:', err);
+          });
+        }
+        
         setUser(null);
         
         // Clear session tracking

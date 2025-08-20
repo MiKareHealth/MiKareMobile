@@ -100,7 +100,7 @@ export default function ConfirmationScreen({ onComplete, onBack }: ConfirmationS
                       <p className="text-sm text-gray-900">{profile.dob || 'Not specified'}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Gender</p>
+                      <p className="text-sm text-gray-500">Birth sex</p>
                       <p className="text-sm text-gray-900">{profile.gender}</p>
                     </div>
                   </div>

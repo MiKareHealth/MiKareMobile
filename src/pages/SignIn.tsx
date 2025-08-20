@@ -8,6 +8,7 @@ import { log, error as logError, warn } from '../utils/logger';
 import RegionSelector from '../components/RegionSelector';
 import { Region, setUserRegion } from '../lib/regionDetection';
 import { SIGNIN_IMAGE, SIGNIN_VIDEO, MIKARE_LOGO } from '../config/branding';
+import { logLoginEvent } from '../utils/auditUtils';
 
 // Forgot Password Modal Component
 const ForgotPasswordModal = ({ 
@@ -345,6 +346,14 @@ export default function SignIn() {
       // Reset attempts on successful login
       resetAttempts();
 
+      // Log login audit event (non-blocking) - use the same client instance
+      console.log('🔍 SIGNIN: About to log login audit event for user:', data.user.id);
+      console.log('🔍 SIGNIN: Client instance:', !!client);
+      logLoginEvent(data.user.id, client).catch((err) => {
+        console.error('🔍 SIGNIN: Failed to log login audit event:', err);
+        logError('Failed to log login audit event:', err);
+      });
+
       // Update user metadata with region if not present
       if (data.user && (!data.user.user_metadata.region || data.user.user_metadata.region !== selectedRegion)) {
         const { error: updateError } = await client.auth.updateUser({
@@ -431,6 +440,14 @@ export default function SignIn() {
         if (!data.session) {
             warn("Auth succeeded but no session was returned");
         }
+
+        // Log demo login audit event (non-blocking) - use the same client instance
+        console.log('🔍 DEMO SIGNIN: About to log demo login audit event for user:', data.user.id);
+        console.log('🔍 DEMO SIGNIN: Client instance:', !!client);
+        logLoginEvent(data.user.id, client).catch((err) => {
+            console.error('🔍 DEMO SIGNIN: Failed to log demo login audit event:', err);
+            logError('Failed to log demo login audit event:', err);
+        });
 
         // Save demo email in localStorage if remember me is checked
         if (rememberMe) {
@@ -719,7 +736,7 @@ export default function SignIn() {
                       </Link>
                     </div>
                     <div className="text-xs text-center mt-2 text-gray-400">
-                      version 1.2.23
+                      version 1.2.25
                     </div>
                   </div>
                 </div>

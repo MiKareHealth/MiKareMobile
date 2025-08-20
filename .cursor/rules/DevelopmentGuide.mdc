@@ -1,4 +1,150 @@
+---
+alwaysApply: false
+---
+
 DEVELOPMENT GUIDE
+
+Environment Setup
+
+Install Node.js (v16+) and npm/yarn
+
+Clone repository and run npm install
+
+Copy .env.example to .env and populate:
+• SUPABASE_URL, SUPABASE_ANON_KEY
+• OPENAI_API_KEY
+• Other service URLs or keys
+
+Project Structure
+
+java
+Copy
+Edit
+src/
+  api/             Supabase client and AI service wrappers  
+  assets/          Static images, videos, logos  
+  components/      Reusable UI (buttons, cards, modals)  
+  contexts/        React Context providers (Auth, Onboarding, Splash)  
+  hooks/           Custom hooks (useAuth, useSessionTimeout)  
+  pages/           Route views (Login, Dashboard, PatientDetails)  
+  services/        Business logic (onboarding, export)  
+  styles/          Tailwind config, globals  
+  utils/           Utility functions (timeUtils, moodUtils)  
+Coding Standards
+
+Use TypeScript for all code
+
+Follow React functional component and hook patterns
+
+Separate “smart” (data-fetching) from “presentational” components
+
+Tailwind CSS utility classes; avoid custom CSS unless necessary
+
+Lucide React for icons; import only used icons
+
+State Management
+
+Global state via Context for auth, onboarding, splash, session timeout
+
+Server state via React Query for Supabase data
+
+Local UI state in component for form inputs
+
+API Integration
+
+Use api/supabaseClient.ts for all database calls
+
+Handle JWT automatically via Supabase Auth
+
+AI calls in api/aiClient.ts, queue via Supabase Functions
+
+Date & Time
+
+All date logic via utils/timeUtils.ts (timezone-aware)
+
+Default format constant MMM dd, yyyy
+
+Use formatInTimeZone() for display, isSameZonedDay() for comparisons
+
+Feature Implementation
+
+Onboarding wizard uses contexts/OnboardingContext to buffer inputs
+
+First-time splash via contexts/SplashContext and components/FirstTimeSplash
+
+PatientDetails page tabs each fetch via React Query and render relevant components
+
+Modals in components/modals/, imported and controlled via local state or context
+
+AI Pipeline
+
+On file/audio insert, trigger Supabase Function for Whisper → store transcript
+
+Follow with GPT summarisation → store summary and suggestions
+
+Display insights via <InsightCard> components
+
+Testing
+
+Unit tests for utility functions (timeUtils, moodUtils)
+
+Component tests for core UI (onboarding, splash, PatientDetails)
+
+Mock Supabase and AI calls in tests
+
+End-to-end tests for signup, onboarding, mood entry, export
+
+CI/CD
+
+Lint and type-check on every pull request (npm run lint, npm run type-check)
+
+Run tests (npm run test)
+
+Deploy web via Vercel on merge to main
+
+Deploy mobile via Expo on release branch
+
+Branch Strategy
+
+main for production-ready code
+
+develop for integration
+
+Feature branches named feature/<description>
+
+Pull requests require review and passing CI
+
+Code Review
+
+All PRs must include updated tests if new logic is added
+
+Check for proper use of context, React Query, and Tailwind classes
+
+Verify no sensitive keys are committed
+
+Documentation
+
+Keep README.md up to date with setup and usage
+
+Document new features in top-level docs/ folder
+
+Add comments in complex logic (AI workflows, session timeout)
+
+Security & Compliance
+
+Do not expose service-role keys in client code
+
+RLS policies in Supabase must match frontend scopes
+
+Review third-party dependencies for vulnerabilities
+
+Performance
+
+Lazy-load heavy components (e.g., audio player, document viewer)
+
+Optimize image sizes and use signed URLs
+
+Use React Query caching and pagination for large listsDEVELOPMENT GUIDE
 
 Environment Setup
 

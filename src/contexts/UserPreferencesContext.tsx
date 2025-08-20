@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
 import { getSupabaseClient } from '../lib/supabaseClient';
 import { formatDate as formatDateUtil, formatDateTime as formatDateTimeUtil } from '../utils/timeUtils';
@@ -37,6 +37,7 @@ export function useUserPreferences() {
 export function UserPreferencesProvider({ children }: { children: ReactNode }) {
   const [preferences, setPreferences] = useState<UserPreferences>(defaultPreferences);
   const [supabaseClient, setSupabaseClient] = useState<any>(null);
+  const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Move fetchPreferences to top-level so it can be called externally
   const fetchPreferences = async () => {
@@ -70,6 +71,16 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Debounced version of fetchPreferences to prevent excessive calls
+  const debouncedFetchPreferences = () => {
+    if (fetchTimeoutRef.current) {
+      clearTimeout(fetchTimeoutRef.current);
+    }
+    fetchTimeoutRef.current = setTimeout(() => {
+      fetchPreferences();
+    }, 300); // 300ms debounce
+  };
+
   useEffect(() => {
     // Initialize Supabase client
     const initializeClient = async () => {
@@ -87,12 +98,12 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!supabaseClient) return;
     fetchPreferences();
-    // Subscribe to auth changes
+    // Subscribe to auth changes with debouncing
     let subscription: any = null;
     const setupAuthListener = async () => {
       try {
         const { data } = supabaseClient.auth.onAuthStateChange(() => {
-          fetchPreferences();
+          debouncedFetchPreferences(); // Use debounced version
         });
         if (data?.subscription) {
           subscription = data.subscription;
@@ -105,6 +116,9 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
     return () => {
       if (subscription) {
         subscription.unsubscribe();
+      }
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
       }
     };
   }, [supabaseClient]);

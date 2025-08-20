@@ -4,6 +4,7 @@ import { Eye, EyeOff, AlertCircle, CheckCircle, Lock } from 'lucide-react';
 import { getSupabaseClient } from '../lib/supabaseClient';
 import { log, error as logError } from '../utils/logger';
 import { MIKARE_LOGO } from '../config/branding';
+import { logPasswordChangeEvent } from '../utils/auditUtils';
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -113,6 +114,14 @@ export default function ResetPassword() {
           setError('Failed to update password. Please try again.');
         }
         return;
+      }
+
+      // Log password change audit event (non-blocking) - use the same client instance
+      const { data: { user } } = await client.auth.getUser();
+      if (user) {
+        logPasswordChangeEvent(user.id, client).catch((err) => {
+          logError('Failed to log password change audit event:', err);
+        });
       }
 
       setSuccess(true);

@@ -13,5 +13,5 @@ export default defineConfig({
   optimizeDeps: {
     include: ['react', 'react-dom', 'base64-js', 'unicode-trie', '@react-pdf/renderer'],
     exclude: ['lucide-react'],
-  },
+  }
 });

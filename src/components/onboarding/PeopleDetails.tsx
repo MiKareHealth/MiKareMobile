@@ -208,7 +208,7 @@ export default function PeopleDetails({ onNext, onBack }: PeopleDetailsProps) {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Gender
+                  Birth Sex
                 </label>
                 <select
                   value={person.gender}

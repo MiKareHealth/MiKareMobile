@@ -9,6 +9,8 @@ import type { Patient } from '../types/database';
 import { useTheme } from '../contexts/ThemeContext';
 import { MIKARE_HEART_LOGO, LOADING_ICON } from '../config/branding';
 import { usePatients, PatientSummary } from '../contexts/PatientsContext';
+import { log, error as logError } from '../utils/logger';
+import MeekaChatWidget from './MeekaChat/MeekaChatWidget';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -64,35 +66,55 @@ export default function Layout({ children, title, loading }: LayoutProps) {
     let timeout: NodeJS.Timeout;
     let interval: NodeJS.Timeout;
     
-    console.log('[Layout] Sidebar loading state:', { patientsLoading, patientsLength: patients.length, sidebarReady });
+    // Only log in development mode
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Layout] Sidebar loading state:', { patientsLoading, patientsLength: patients.length, sidebarReady });
+    }
+    
+    // If we already have patients, show sidebar immediately
+    if (patients.length > 0) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Layout] Patients already loaded, showing sidebar immediately');
+      }
+      setSidebarReady(true);
+      return;
+    }
     
     // Show skeleton if still loading OR if we have no patients yet but loading is complete
     if (patientsLoading || (!patientsLoading && patients.length === 0 && !sidebarReady)) {
-      console.log('[Layout] Showing skeleton loading');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Layout] Showing skeleton loading');
+      }
       setSidebarReady(false);
       const start = Date.now();
       interval = setInterval(() => {
         // Stop showing skeleton if we have patients OR if loading is complete and we've waited long enough
         if (patients.length > 0 || (!patientsLoading && Date.now() - start > 800)) {
-          console.log('[Layout] Stopping skeleton, patients:', patients.length, 'loading:', patientsLoading);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[Layout] Stopping skeleton, patients:', patients.length, 'loading:', patientsLoading);
+          }
           setSidebarReady(true);
           clearInterval(interval);
         }
       }, 100);
       timeout = setTimeout(() => {
-        console.log('[Layout] Skeleton timeout reached');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[Layout] Skeleton timeout reached');
+        }
         setSidebarReady(true);
         clearInterval(interval);
       }, 800); // Increased timeout to 800ms to give more time for patient loading
     } else {
-      console.log('[Layout] Setting sidebar ready immediately');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Layout] Setting sidebar ready immediately');
+      }
       setSidebarReady(true);
     }
     return () => {
       clearInterval(interval);
       clearTimeout(timeout);
     };
-  }, [patientsLoading, patients.length, sidebarReady]);
+  }, [patientsLoading, patients.length]); // Remove sidebarReady dependency to prevent infinite loop
 
   const handleSignOut = async () => {
     if (signoutInProgress) return;
@@ -397,6 +419,9 @@ export default function Layout({ children, title, loading }: LayoutProps) {
           </div>
         </main>
       </div>
+      
+      {/* Meeka Chat Widget */}
+      <MeekaChatWidget />
     </div>
   );
 }

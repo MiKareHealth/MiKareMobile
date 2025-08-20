@@ -47,7 +47,7 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
   const [hasRecordingPermission, setHasRecordingPermission] = useState<boolean | null>(null);
   const [permissionError, setPermissionError] = useState<string>('');
   const [newAttendee, setNewAttendee] = useState('');
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioUploading, setAudioUploading] = useState(false);
   const [audioUploaded, setAudioUploaded] = useState(false);
@@ -424,46 +424,53 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
         fileUrl = audioUrl;
       }
 
-      // Then upload the regular file if it exists
-      let uploadedFileName: string | null = null;
-      let originalFileName: string | null = null;
-      if (file) {
-        log('Starting file upload process for:', file.name);
-        originalFileName = file.name;
+      // Then upload all regular files if they exist
+      const uploadedFiles: Array<{fileName: string, originalName: string, fileUrl: string}> = [];
+      
+      if (files.length > 0) {
+        log('Starting file upload process for', files.length, 'files');
         
-        // Use simple filename format like DocumentModal
-        const uniqueFileName = `${profileId}/${Date.now()}-${file.name}`;
-        uploadedFileName = uniqueFileName; // Store for use in database record
-        
-        log('Upload details:', {
-          originalName: file.name,
-          uniqueFileName,
-          fileSize: file.size,
-          fileType: file.type
-        });
-        
-        // Simple upload like DocumentModal
-        const { error: uploadError } = await supabaseClient.storage
-          .from('patient-documents')
-          .upload(uniqueFileName, file, {
-            cacheControl: '3600',
-            upsert: false,
-            metadata: { patient_id: profileId }
+        for (const file of files) {
+          log('Uploading file:', file.name);
+          
+          // Use simple filename format like DocumentModal
+          const uniqueFileName = `${profileId}/${Date.now()}-${file.name}`;
+          
+          log('Upload details:', {
+            originalName: file.name,
+            uniqueFileName,
+            fileSize: file.size,
+            fileType: file.type
           });
-        
-        if (uploadError) {
-          logError('Upload failed:', uploadError);
-          throw uploadError;
+          
+          // Simple upload like DocumentModal
+          const { error: uploadError } = await supabaseClient.storage
+            .from('patient-documents')
+            .upload(uniqueFileName, file, {
+              cacheControl: '3600',
+              upsert: false,
+              metadata: { patient_id: profileId }
+            });
+          
+          if (uploadError) {
+            logError('Upload failed for file:', file.name, uploadError);
+            throw uploadError;
+          }
+          
+          log('File uploaded successfully to path:', uniqueFileName);
+          
+          const { data: { publicUrl } } = supabaseClient.storage
+            .from('patient-documents')
+            .getPublicUrl(uniqueFileName);
+          
+          uploadedFiles.push({
+            fileName: uniqueFileName,
+            originalName: file.name,
+            fileUrl: publicUrl
+          });
+          
+          log('Generated public URL:', publicUrl);
         }
-        
-        log('File uploaded successfully to path:', uniqueFileName);
-        
-        const { data: { publicUrl } } = supabaseClient.storage
-          .from('patient-documents')
-          .getPublicUrl(uniqueFileName);
-        fileUrl = publicUrl;
-        
-        log('Generated public URL:', publicUrl);
       }
 
       const entryData = {
@@ -474,7 +481,7 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
         notes: notes.trim() || null,
         severity: entryType === 'Symptom' ? severity : null,
         attendees: attendees.map((a: string) => a.trim()).filter((a: string) => a),
-        file_url: fileUrl
+        file_url: null // We now handle files through patient_documents table
       };
 
       let entryId: string | null = editEntry?.id || null;
@@ -501,12 +508,10 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
         }
       }
 
-      // If we have successfully uploaded a regular file, add it to patient_documents
-      if (file && fileUrl && entryId && uploadedFileName && originalFileName) {
-        log('Creating database record for uploaded file:', {
-          uploadedFileName,
-          originalFileName,
-          fileUrl,
+      // If we have successfully uploaded files, add them to patient_documents
+      if (uploadedFiles.length > 0 && entryId) {
+        log('Creating database records for uploaded files:', {
+          fileCount: uploadedFiles.length,
           entryId
         });
         
@@ -515,35 +520,40 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
           throw new Error('User not authenticated');
         }
         
-        const documentData = {
-          patient_id: profileId,
-          file_name: originalFileName, // Store original name for display
-          file_type: file.type,
-          file_size: file.size,
-          file_url: fileUrl,
-          description: `Document for diary entry: ${title}`,
-          uploaded_by: user.id,
-          diary_entry_id: entryId,
-          summary: null // Initially null
-        };
+        // Create document records for all uploaded files
+        const documentDataArray = uploadedFiles.map(uploadedFile => {
+          const originalFile = files.find(f => f.name === uploadedFile.originalName);
+          return {
+            patient_id: profileId,
+            file_name: uploadedFile.originalName, // Store original name for display
+            file_type: originalFile?.type || 'application/octet-stream',
+            file_size: originalFile?.size || 0,
+            file_url: uploadedFile.fileUrl,
+            description: `Document for diary entry: ${title}`,
+            uploaded_by: user.id,
+            diary_entry_id: entryId,
+            summary: null // Initially null
+          };
+        });
         
-        log('Inserting document record:', documentData);
+        log('Inserting document records:', documentDataArray);
         
-        const { data: newDoc, error: docError } = await supabaseClient
+        const { data: newDocs, error: docError } = await supabaseClient
           .from('patient_documents')
-          .insert([documentData])
-          .select('id')
-          .single();
+          .insert(documentDataArray)
+          .select('id');
           
         if (docError) {
-          logError('Error adding file to documents:', docError);
-        } else if (newDoc?.id) {
-          log('Document record created successfully with ID:', newDoc.id);
-          // Fire and forget the summarization function
-          supabaseClient.functions.invoke('summarize-document', {
-            body: { document_id: newDoc.id },
-          }).then(({ error: functionError }) => {
-            if (functionError) logError('Error invoking summary function:', functionError);
+          logError('Error adding files to documents:', docError);
+        } else if (newDocs && newDocs.length > 0) {
+          log('Document records created successfully for', newDocs.length, 'files');
+          // Fire and forget the summarization function for each document
+          newDocs.forEach(doc => {
+            supabaseClient.functions.invoke('summarize-document', {
+              body: { document_id: doc.id },
+            }).then(({ error: functionError }) => {
+              if (functionError) logError('Error invoking summary function for doc', doc.id, ':', functionError);
+            });
           });
         }
       }
@@ -689,12 +699,12 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
       }
       setNotes(editEntry?.notes || initialNotes || '');
       setSeverity(editEntry?.severity || '');
-      setAttendees(editEntry?.attendees || []);
-      setNewAttendee('');
-      setFile(null);
-      setAudioFile(null);
-      setAudioUploaded(false);
-      setAudioUrl(null);
+                      setAttendees(editEntry?.attendees || []);
+        setNewAttendee('');
+        setFiles([]);
+        setAudioFile(null);
+        setAudioUploaded(false);
+        setAudioUrl(null);
       setError(null);
       setTranscriptionError(null);
       setShowDeleteModal(false);
@@ -1003,16 +1013,45 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
             )}
             
             {!isViewOnly && (
-              <input
-                type="file"
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
-                disabled={isViewOnly}
-                className={`mt-1 block w-full text-sm text-text-secondary file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-background-light file:text-primary hover:file:bg-background-light ${
-                  isViewOnly ? 'cursor-not-allowed opacity-70' : ''
-                }`}
-              />
+              <div className="mt-1">
+                <input
+                  type="file"
+                  onChange={(e) => setFiles(Array.from(e.target.files || []))}
+                  disabled={isViewOnly}
+                  className={`block w-full text-sm text-text-secondary file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-background-light file:text-primary hover:file:bg-background-light ${
+                    isViewOnly ? 'cursor-not-allowed opacity-70' : ''
+                  }`}
+                  multiple
+                  accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.mp3,.wav,.m4a"
+                />
+                <p className="text-xs text-text-secondary mt-1">
+                  Select multiple files (PDF, Word, images, audio files)
+                </p>
+              </div>
             )}
-            {file && <span className="text-xs text-text-secondary ml-2">{file.name}</span>}
+            {files.length > 0 && (
+              <div className="mt-2 space-y-2">
+                <p className="text-xs font-medium text-text-primary">Selected files ({files.length}):</p>
+                <div className="flex flex-wrap gap-2">
+                  {files.map((file, index) => (
+                    <div key={index} className="flex items-center bg-background-light text-text-secondary px-3 py-1 rounded-md text-xs font-medium border border-border">
+                      <span className="truncate max-w-32">{file.name}</span>
+                      <span className="ml-2 text-xs text-text-secondary">({Math.round(file.size / 1024)} KB)</span>
+                      {!isViewOnly && (
+                        <button
+                          type="button"
+                          onClick={() => setFiles(files.filter((_, i) => i !== index))}
+                          className="ml-2 text-red-500 hover:text-red-600 transition-colors"
+                          title="Remove file"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Error Display */}

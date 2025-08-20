@@ -8,6 +8,7 @@ import SettingsScreen from './SettingsScreen';
 import MediaScreen from './MediaScreen';
 import LoadingScreen from './LoadingScreen';
 import { getSupabaseClient, getCurrentRegion, switchToRegion } from '../../lib/supabaseClient';
+import { logLoginEvent } from '../../utils/auditUtils';
 
 interface OnboardingModalProps {
   isOpen: boolean;
@@ -130,6 +131,8 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
       for (const profile of state.profiles) {
         if (!profile.fullName) continue; // Skip empty profiles
         
+        console.log('🔍 ONBOARDING: Creating patient:', profile.fullName);
+        
         const { error: patientError } = await supabase
           .from('patients')
           .insert([{
@@ -143,7 +146,12 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
             phone_number: 'Not specified'
           }]);
           
-        if (patientError) throw patientError;
+        if (patientError) {
+          console.error('🔍 ONBOARDING: Error creating patient:', patientError);
+          throw patientError;
+        }
+        
+        console.log('🔍 ONBOARDING: Patient created successfully:', profile.fullName);
       }
       
       // 4. Sign in the user automatically
@@ -153,6 +161,14 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
       });
       
       if (signInError) throw signInError;
+      
+      // Log login audit event (non-blocking) - use the same client instance
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        logLoginEvent(user.id, supabase).catch((err) => {
+          console.error('Failed to log login audit event:', err);
+        });
+      }
       
       // Wait for minimum loading time
       await minLoadingTime;

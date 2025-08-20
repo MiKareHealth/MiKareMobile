@@ -278,7 +278,7 @@ export default function EditPatientModal({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Gender
+                  Birth sex
                 </label>
                 <div className="mt-1">
                   <select
