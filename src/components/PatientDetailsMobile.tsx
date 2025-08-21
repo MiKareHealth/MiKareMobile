@@ -27,6 +27,7 @@ import MedicationList from './MedicationList';
 import MoodTab from './MoodTab';
 import AIAnalysisButtons from './AIAnalysisButtons';
 import ReportMenu from './ReportMenu';
+import MeekaChatWidget from './MeekaChat/MeekaChatWidget';
 import { useUserPreferences } from '../contexts/UserPreferencesContext';
 import { getEmoji } from '../utils/moodUtils';
 import { getSupabaseClient } from '../lib/supabaseClient';
@@ -1261,6 +1262,9 @@ export default function PatientDetailsMobile({
           </div>
         )}
       </div>
+      
+      {/* Meeka Chat Widget */}
+      <MeekaChatWidget />
     </div>
   );
 }

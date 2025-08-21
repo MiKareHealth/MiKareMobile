@@ -42,11 +42,11 @@ export const isToday = (date: string): boolean => {
  */
 export const getMoodColorClass = (mood: number): string => {
   switch (mood) {
-    case 1: return 'bg-gray-200';
-    case 2: return 'bg-gray-200';
-    case 3: return 'bg-gray-200';
-    case 4: return 'bg-gray-200';
-    case 5: return 'bg-gray-200';
+    case 1: return 'bg-red-200';
+    case 2: return 'bg-orange-200';
+    case 3: return 'bg-yellow-200';
+    case 4: return 'bg-lime-200';
+    case 5: return 'bg-green-200'
     default: return 'bg-gray-100';
   }
 };
