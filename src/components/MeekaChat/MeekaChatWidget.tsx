@@ -5,18 +5,20 @@ import MeekaChatPanel from './MeekaChatPanel';
 import { useMeekaChat } from '../../hooks/useMeekaChat';
 
 export default function MeekaChatWidget() {
-  const { isOpen, toggleChat } = useMeekaChat();
+  const meekaChat = useMeekaChat();
 
   return (
     <>
       {/* Floating Button with Hover Tooltip */}
-      <div className="fixed bottom-6 right-6 z-50 group">
+      <div className="fixed z-50 group sm:bottom-6 sm:right-6 bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-[calc(1.5rem+env(safe-area-inset-right))]">
         <button
-          onClick={toggleChat}
+          onClick={meekaChat.toggleChat}
           className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-all duration-200 focus:ring-2 focus:ring-teal-300 focus:ring-offset-2 transform hover:scale-105"
           aria-label="Ask Meeka"
+          aria-expanded={meekaChat.isOpen}
+          aria-controls="meeka-chat-panel"
         >
-          {isOpen ? (
+          {meekaChat.isOpen ? (
             <X className="h-6 w-6" />
           ) : (
             <MessageCircle className="h-6 w-6" />
@@ -32,7 +34,7 @@ export default function MeekaChatWidget() {
       </div>
 
       {/* Chat Panel */}
-      {isOpen && <MeekaChatPanel />}
+      {meekaChat.isOpen && <MeekaChatPanel id="meeka-chat-panel" meekaChat={meekaChat} />}
     </>
   );
 }

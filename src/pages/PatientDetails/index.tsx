@@ -38,7 +38,26 @@ export default function PatientDetails() {
   
   const { isFreePlan } = useSubscription();
   
-  const { patient, documents, symptoms, diaryEntries, medications, moodEntries, todaysMood, loading, error, refresh } = usePatientData(id!);
+  const { patient, documents, symptoms, diaryEntries, medications, moodEntries, todaysMood, loading, error, refresh, refreshTable } = usePatientData(id!);
+
+  // Listen for Meeka data update events
+  useEffect(() => {
+    const handleMeekaDataUpdate = (event: CustomEvent) => {
+      const { table, action, patientId: eventPatientId } = event.detail;
+      
+      // Only refresh if this event is for the current patient
+      if (eventPatientId === id) {
+        log('PatientDetails: Received Meeka data update event for table:', table);
+        refreshTable(table);
+      }
+    };
+
+    window.addEventListener('meekaDataUpdate', handleMeekaDataUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('meekaDataUpdate', handleMeekaDataUpdate as EventListener);
+    };
+  }, [id, refreshTable]);
 
   // Memoize filtered diary entries to prevent unnecessary recalculations
   const filteredDiaryEntries = useMemo(() => {

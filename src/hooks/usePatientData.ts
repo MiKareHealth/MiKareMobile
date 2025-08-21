@@ -4,6 +4,7 @@ import { getSupabaseClient } from '../lib/supabaseClient';
 import type { Patient, PatientActivity, PatientDocument, Symptom, DiaryEntry, Medication, MoodEntry } from '../types/database';
 import { useUserPreferences } from '../contexts/UserPreferencesContext';
 import { isToday } from '../utils/timeUtils';
+import { log, error as logError } from '../utils/logger';
 
 export function usePatientData(patientId: string) {
   const [user, setUser] = useState<User | null>(null);
@@ -137,6 +138,69 @@ export function usePatientData(patientId: string) {
     fetchData();
   }, [patientId]); // Remove preferences.timezone dependency to prevent unnecessary refetches
 
+  // Targeted refresh function for specific tables
+  const refreshTable = async (tableName: string) => {
+    try {
+      log(`Refreshing specific table: ${tableName}`);
+      const supabase = await getSupabaseClient();
+      
+      switch (tableName) {
+        case 'symptoms':
+          const { data: symptomsData } = await supabase
+            .from('symptoms')
+            .select('*')
+            .eq('profile_id', patientId)
+            .order('start_date', { ascending: false });
+          if (symptomsData) {
+            setSymptoms(symptomsData);
+          }
+          break;
+          
+        case 'medications':
+          const { data: medicationsData } = await supabase
+            .from('medications')
+            .select('*')
+            .eq('profile_id', patientId)
+            .order('start_date', { ascending: false });
+          if (medicationsData) {
+            setMedications(medicationsData);
+          }
+          break;
+          
+        case 'diary_entries':
+          const { data: diaryEntriesData } = await supabase
+            .from('diary_entries')
+            .select('*')
+            .eq('profile_id', patientId)
+            .order('date', { ascending: false })
+            .order('created_at', { ascending: false });
+          if (diaryEntriesData) {
+            setDiaryEntries(diaryEntriesData);
+          }
+          break;
+          
+        case 'mood_entries':
+          const { data: moodEntriesData } = await supabase
+            .from('mood_entries')
+            .select('*')
+            .eq('profile_id', patientId)
+            .order('date', { ascending: false })
+            .order('created_at', { ascending: false });
+          if (moodEntriesData) {
+            setMoodEntries(moodEntriesData);
+          }
+          break;
+          
+        default:
+          log(`Unknown table for targeted refresh: ${tableName}`);
+      }
+      
+      log(`Targeted refresh completed for table: ${tableName}`);
+    } catch (error) {
+      logError(`Error during targeted refresh for table ${tableName}:`, error);
+    }
+  };
+
   return {
     user,
     patient,
@@ -149,6 +213,7 @@ export function usePatientData(patientId: string) {
     todaysMood,
     loading,
     error,
-    refresh: fetchData
+    refresh: fetchData,
+    refreshTable
   };
 }
