@@ -279,8 +279,9 @@ export function PatientsProvider({ children }: { children: React.ReactNode }) {
           }
         }
       } else if (isMounted && !user) {
-        console.log('[PatientsContext] Fallback: no user or still loading, retrying in 2 seconds...');
-        retryTimeout = setTimeout(fallbackFetch, 2000);
+        // Don't retry if there's no user - this is expected on auth pages
+        console.log('[PatientsContext] Fallback: no authenticated user found, stopping fallback mechanism');
+        return;
       }
     };
 
