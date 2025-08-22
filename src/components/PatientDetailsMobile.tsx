@@ -20,7 +20,8 @@ import {
   Printer,
   Home,
   UserPlus,
-  Plus
+  Plus,
+  Info
 } from 'lucide-react';
 import { MdOutlineSick } from 'react-icons/md';
 import MedicationList from './MedicationList';
@@ -40,6 +41,7 @@ import DetailedReportModal from './DetailedReportModal';
 import SubscriptionFeatureBlock from './SubscriptionFeatureBlock';
 import { useSubscription } from '../hooks/useSubscription';
 import { usePatients, PatientSummary } from '../contexts/PatientsContext';
+import { useFreePlanUsage } from '../hooks/useFreePlanUsage';
 
 type Tab = {
   id: TabType;
@@ -118,6 +120,7 @@ export default function PatientDetailsMobile({
   const { formatDate } = useUserPreferences();
   const { isFreePlan } = useSubscription();
   const { patients, loading: patientsLoading } = usePatients();
+  const { canAddDiaryEntry, canUseAI } = useFreePlanUsage();
   
   // Photo upload states
   const [showPhotoModal, setShowPhotoModal] = useState(false);
@@ -387,7 +390,7 @@ export default function PatientDetailsMobile({
                   )}
                 </button>
                 
-                <SubscriptionFeatureBlock isBlocked={isFreePlan} featureName="Add diary entry">
+                <SubscriptionFeatureBlock isBlocked={isFreePlan && !canAddDiaryEntry} featureName="Add diary entry">
                   <button
                     onClick={onAddDiaryEntry}
                     className="inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white rounded-lg shadow-lg text-sm font-medium"
@@ -472,7 +475,7 @@ export default function PatientDetailsMobile({
                     <p className="mt-2 text-sm text-gray-500 max-w-sm mx-auto">
                       Keep track of appointments, diagnoses, and treatments by adding diary entries.
                     </p>
-                    <SubscriptionFeatureBlock isBlocked={isFreePlan} featureName="Add diary entry">
+                    <SubscriptionFeatureBlock isBlocked={isFreePlan && !canAddDiaryEntry} featureName="Add diary entry">
                       <button
                         onClick={onAddDiaryEntry}
                         className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700"
@@ -1002,53 +1005,17 @@ export default function PatientDetailsMobile({
           </div>
         )}
 
-        {/* Row 2: Four Action Buttons */}
-        <div className="p-4 bg-gray-50 border-b border-gray-200 w-full">
-          <div className="grid grid-cols-4 gap-2 w-full">
-            {/* Diary Button - Teal */}
-            <SubscriptionFeatureBlock isBlocked={isFreePlan} featureName="Add diary entry">
-              <button
-                onClick={onAddDiaryEntry}
-                className="w-full bg-gradient-to-br from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center py-4"
-              >
-                <Calendar className="h-6 w-6" />
-              </button>
-            </SubscriptionFeatureBlock>
-            
-            {/* Symptom Button - Purple */}
-            <SubscriptionFeatureBlock isBlocked={isFreePlan} featureName="Track symptoms">
-              <button
-                onClick={onAddSymptom}
-                className="w-full bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center py-4"
-              >
-                <MdOutlineSick className="h-6 w-6" />
-              </button>
-            </SubscriptionFeatureBlock>
-            
-            {/* Doctor Overview Button - Blue */}
+        {/* Row 2: Add Diary Entry Button */}
+        <div className="p-4 bg-white border-b border-gray-200">
+          <SubscriptionFeatureBlock isBlocked={isFreePlan && !canAddDiaryEntry} featureName="Add diary entry">
             <button
-              onClick={() => {
-                if (patient) {
-                  setShowSummaryModal(true);
-                }
-              }}
-              className="w-full bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center py-4"
+              onClick={onAddDiaryEntry}
+              className="w-full px-6 py-4 rounded-xl text-lg font-semibold transition-all duration-200 flex items-center justify-center shadow-lg bg-gradient-to-r from-teal-400 to-teal-500 hover:from-teal-500 hover:to-teal-600 text-white"
             >
-              <Stethoscope className="h-6 w-6" />
+              <Plus className="h-6 w-6 mr-3" />
+              Add Diary Entry
             </button>
-            
-            {/* Print Report Button - Gray */}
-            <button
-              onClick={() => {
-                if (patient) {
-                  setShowDetailsModal(true);
-                }
-              }}
-              className="w-full bg-gradient-to-br from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center py-4"
-            >
-              <Printer className="h-6 w-6" />
-            </button>
-          </div>
+          </SubscriptionFeatureBlock>
         </div>
 
         {/* Row 3: Patient Name and Profile */}
@@ -1138,7 +1105,16 @@ export default function PatientDetailsMobile({
                     <p className="mt-1 text-sm">{patient.address}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Notes</label>
+                    <label className="block text-sm font-medium text-gray-700 flex items-center">
+                      Notes
+                                              <div className="relative ml-1 group">
+                          <Info className="h-4 w-4 text-gray-400 cursor-help" />
+                          <div className="absolute left-full top-1/2 transform -translate-y-1/2 ml-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none w-64 sm:w-80 z-10">
+                            Consider adding family history, allergies, cultural background, religious preferences, nationality, or other relevant details that healthcare providers should know.
+                            <div className="absolute top-1/2 right-full transform -translate-y-1/2 w-0 h-0 border-r-4 border-t-4 border-b-4 border-transparent border-r-gray-900"></div>
+                          </div>
+                        </div>
+                    </label>
                     {patient.notes ? (
                       <p className="mt-1 text-sm whitespace-pre-wrap">{patient.notes}</p>
                     ) : (
@@ -1199,7 +1175,7 @@ export default function PatientDetailsMobile({
               symptoms={symptoms}
               patient={patient}
               onSuccess={onRefresh}
-              autoCreate={!isFreePlan}
+              autoCreate={!isFreePlan || (isFreePlan && canUseAI)}
               onOpenDiaryEntry={onEditDiaryEntry}
             />
           </SubscriptionFeatureBlock>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getSupabaseClient } from '../lib/supabaseClient';
 import { error as logError } from '../utils/logger';
+import { useSubscription } from './useSubscription';
 
 interface FreePlanUsage {
   diaryEntriesUsed: number;
@@ -10,6 +11,7 @@ interface FreePlanUsage {
 }
 
 export function useFreePlanUsage() {
+  const { isFreePlan } = useSubscription();
   const [usage, setUsage] = useState<FreePlanUsage>({
     diaryEntriesUsed: 0,
     aiAnalysisUsed: 0,
@@ -21,6 +23,18 @@ export function useFreePlanUsage() {
   const checkUsage = async () => {
     try {
       setLoading(true);
+      
+      // If not on free plan, always allow usage
+      if (!isFreePlan) {
+        setUsage({
+          diaryEntriesUsed: 0,
+          aiAnalysisUsed: 0,
+          canAddDiaryEntry: true,
+          canUseAI: true
+        });
+        return;
+      }
+      
       const supabase = await getSupabaseClient();
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -94,7 +108,7 @@ export function useFreePlanUsage() {
 
   useEffect(() => {
     checkUsage();
-  }, []);
+  }, [isFreePlan]);
 
   return {
     ...usage,

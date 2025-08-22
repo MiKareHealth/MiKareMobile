@@ -196,10 +196,52 @@ export default function SignIn() {
     }
   }, [resetBanner]);
 
-  // Load lockout state from localStorage on mount
+  // Load lockout state from localStorage on mount and refresh when page becomes visible
   useEffect(() => {
-    setLockoutState(getLockoutState());
+    const refreshLockoutState = () => {
+      setLockoutState(getLockoutState());
+    };
+
+    // Refresh lockout state on mount
+    refreshLockoutState();
+
+    // Refresh lockout state when page becomes visible (user navigates back)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        refreshLockoutState();
+      }
+    };
+
+    // Refresh lockout state when window gains focus (user switches back to tab)
+    const handleFocus = () => {
+      refreshLockoutState();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
+
+  // Periodically refresh lockout state to update remaining time display
+  useEffect(() => {
+    if (lockoutState.isLocked) {
+      const interval = setInterval(() => {
+        const currentState = getLockoutState();
+        setLockoutState(currentState);
+        
+        // If lockout has expired, clear the interval
+        if (!currentState.isLocked) {
+          clearInterval(interval);
+        }
+      }, 1000); // Update every second
+
+      return () => clearInterval(interval);
+    }
+  }, [lockoutState.isLocked]);
 
   useEffect(() => {
     const rememberedEmail = localStorage.getItem('rememberedEmail');
@@ -645,7 +687,7 @@ export default function SignIn() {
                   {lockoutState.isLocked && (
                     <div className="mt-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-2">
                       <Lock className="h-4 w-4 inline mr-1" />
-                      Account temporarily locked. Please try again later or reset your password.
+                      Account temporarily locked. Please try again in {formatLockoutTime(lockoutState.remainingLockoutTime)} or reset your password.
                     </div>
                   )}
                 </div>
@@ -751,7 +793,7 @@ export default function SignIn() {
                       </Link>
                     </div>
                     <div className="text-xs text-center mt-2 text-gray-400">
-                      version 1.2.30
+                      version 1.2.40
                     </div>
                   </div>
                 </div>

@@ -451,6 +451,62 @@ describe('SignIn Component', () => {
       
       unmount();
     });
+
+    it('refreshes lockout state when page becomes visible', () => {
+      // Set up a locked state in localStorage
+      const lockoutTime = Date.now() + (5 * 60 * 1000); // 5 minutes from now
+      localStorageMock.getItem.mockReturnValueOnce('3'); // 3 attempts
+      localStorageMock.getItem.mockReturnValueOnce(Date.now().toString()); // Recent time
+      localStorageMock.getItem.mockReturnValueOnce(lockoutTime.toString()); // Lockout until
+      
+      renderSignIn();
+      
+      // Verify lockout message is shown
+      expect(screen.getByText(/account temporarily locked/i)).toBeInTheDocument();
+      
+      // Simulate page becoming visible
+      Object.defineProperty(document, 'hidden', {
+        value: false,
+        writable: true,
+      });
+      document.dispatchEvent(new Event('visibilitychange'));
+      
+      // Verify getLockoutState was called again (refreshed)
+      expect(localStorageMock.getItem).toHaveBeenCalledWith('mikare_login_attempts');
+      expect(localStorageMock.getItem).toHaveBeenCalledWith('mikare_attempt_time');
+      expect(localStorageMock.getItem).toHaveBeenCalledWith('mikare_lockout_until');
+    });
+
+    it('updates remaining lockout time display in real-time', () => {
+      // Set up a locked state in localStorage
+      const lockoutTime = Date.now() + (5 * 60 * 1000); // 5 minutes from now
+      localStorageMock.getItem.mockReturnValueOnce('3'); // 3 attempts
+      localStorageMock.getItem.mockReturnValueOnce(Date.now().toString()); // Recent time
+      localStorageMock.getItem.mockReturnValueOnce(lockoutTime.toString()); // Lockout until
+      
+      renderSignIn();
+      
+      // Verify lockout message shows remaining time
+      expect(screen.getByText(/account temporarily locked/i)).toBeInTheDocument();
+      expect(screen.getByText(/please try again in/i)).toBeInTheDocument();
+    });
+
+    it('clears lockout state when lockout expires', () => {
+      // Set up an expired lockout state in localStorage
+      const expiredLockoutTime = Date.now() - (1 * 60 * 1000); // 1 minute ago (expired)
+      localStorageMock.getItem.mockReturnValueOnce('3'); // 3 attempts
+      localStorageMock.getItem.mockReturnValueOnce(Date.now().toString()); // Recent time
+      localStorageMock.getItem.mockReturnValueOnce(expiredLockoutTime.toString()); // Expired lockout
+      
+      renderSignIn();
+      
+      // Verify lockout message is NOT shown (lockout expired)
+      expect(screen.queryByText(/account temporarily locked/i)).not.toBeInTheDocument();
+      
+      // Verify the form is enabled (not locked)
+      const passwordInput = screen.getByTestId('password-input');
+      expect(passwordInput).not.toBeDisabled();
+    });
   });
 
   describe('Error Handling', () => {

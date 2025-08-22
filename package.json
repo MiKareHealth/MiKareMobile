@@ -12,17 +12,18 @@
     "test:watch": "jest --watch"
   },
   "dependencies": {
-    "ai": "^5.0.18",
-    "zod": "^3.22.4",
     "@google/generative-ai": "^0.2.1",
     "@react-pdf/renderer": "^3.4.0",
     "@supabase/supabase-js": "^2.39.7",
+    "@tanstack/react-query": "^5.85.5",
+    "ai": "^5.0.18",
     "date-fns": "^3.6.0",
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-icons": "^5.5.0",
-    "react-router-dom": "^6.22.3"
+    "react-router-dom": "^6.22.3",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",

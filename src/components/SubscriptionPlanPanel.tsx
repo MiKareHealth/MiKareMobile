@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { PlanKey, PRICING } from '../config/pricing';
 import { tokens } from '../styles/tokens';
 import { normalizeRegion } from '../utils/stripe';
@@ -10,6 +10,14 @@ interface SubscriptionPlanPanelProps {
   region: 'AUD' | 'GBP' | 'USD';
   onSubscribe: (planKey: PlanKey) => void;
   initialExpanded?: boolean;
+  expanded?: boolean;
+  onExpandedChange?: (expanded: boolean) => void;
+}
+
+export interface SubscriptionPlanPanelRef {
+  expand: () => void;
+  collapse: () => void;
+  focus: () => void;
 }
 
 const PLAN_SUMMARY: Record<PlanKey, { title: string; description: string }> = {
@@ -30,14 +38,27 @@ const PLAN_SUMMARY: Record<PlanKey, { title: string; description: string }> = {
   },
 };
 
-const SubscriptionPlanPanel: React.FC<SubscriptionPlanPanelProps> = ({ 
+const SubscriptionPlanPanel = forwardRef<SubscriptionPlanPanelRef, SubscriptionPlanPanelProps>(({ 
   currentPlanKey, 
   region, 
   onSubscribe,
-  initialExpanded = false
-}) => {
+  initialExpanded = false,
+  expanded: externalExpanded,
+  onExpandedChange
+}, ref) => {
   const [loading, setLoading] = useState<PlanKey | null>(null);
-  const [showPlans, setShowPlans] = useState(initialExpanded);
+  const [internalShowPlans, setInternalShowPlans] = useState(initialExpanded);
+  
+  // Use external state if provided, otherwise use internal state
+  const showPlans = externalExpanded !== undefined ? externalExpanded : internalShowPlans;
+  const setShowPlans = (value: boolean) => {
+    if (externalExpanded !== undefined) {
+      onExpandedChange?.(value);
+    } else {
+      setInternalShowPlans(value);
+    }
+  };
+  
   const summary = PLAN_SUMMARY[currentPlanKey];
   const isOnTopPlan = currentPlanKey === 'family'; 
   
@@ -52,6 +73,19 @@ const SubscriptionPlanPanel: React.FC<SubscriptionPlanPanelProps> = ({
   const plansToShow: PlanKey[] = ['single', 'family'].filter(plan => 
     plan !== currentPlanKey && plan !== 'free'
   );
+  
+  // Expose methods via ref
+  useImperativeHandle(ref, () => ({
+    expand: () => setShowPlans(true),
+    collapse: () => setShowPlans(false),
+    focus: () => {
+      // Focus the panel by scrolling to it
+      const element = document.querySelector('[data-subscription-panel]');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }));
   
   // Log debug information
   useEffect(() => {
@@ -82,11 +116,14 @@ const SubscriptionPlanPanel: React.FC<SubscriptionPlanPanelProps> = ({
     e.preventDefault(); // Prevent any form submission
     e.stopPropagation(); // Prevent event bubbling
     console.log('Toggling plans visibility from', showPlans, 'to', !showPlans);
-    setShowPlans(prev => !prev);
+    setShowPlans(!showPlans);
   };
 
   return (
-    <div className={`bg-white shadow-sm rounded-xl p-6 mb-4 ${!showFreePlanBlock ? 'hidden' : ''}`}>
+    <div 
+      data-subscription-panel
+      className={`bg-white shadow-sm rounded-xl p-6 mb-4 ${!showFreePlanBlock ? 'hidden' : ''}`}
+    >
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h3 className="text-xl font-semibold mb-1">{summary.title}</h3>
@@ -169,6 +206,8 @@ const SubscriptionPlanPanel: React.FC<SubscriptionPlanPanelProps> = ({
       )}
     </div>
   );
-};
+});
+
+SubscriptionPlanPanel.displayName = 'SubscriptionPlanPanel';
 
 export default SubscriptionPlanPanel;

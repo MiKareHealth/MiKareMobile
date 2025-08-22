@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Smile, ChevronRight, FileText, AlertCircle } from 'lucide-react';
@@ -14,7 +14,7 @@ import { isToday, getCurrentDateInTimezone } from '../utils/timeUtils';
 import { tokens, theme } from '../styles/tokens';
 import { themeClasses } from '../styles/themeUtils';
 import Skeleton from '../components/Skeleton';
-import SubscriptionPlanPanel from '../components/SubscriptionPlanPanel';
+import SubscriptionPlanPanel, { SubscriptionPlanPanelRef } from '../components/SubscriptionPlanPanel';
 import { normalizeRegion } from '../utils/stripe';
 import type { PlanKey } from '../config/pricing';
 import SubscriptionFeatureBlock from '../components/SubscriptionFeatureBlock';
@@ -206,19 +206,25 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [userLoading, setUserLoading] = useState(true);
   const { patients, loading: patientsLoading, refreshPatients } = usePatients();
   const { preferences } = useUserPreferences();
   const [showMoodModal, setShowMoodModal] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
-  const { isFreePlan } = useSubscription();
+  const { isFreePlan, isLoading: subscriptionLoading } = useSubscription();
   const [showDiaryEntryModal, setShowDiaryEntryModal] = useState(false);
   const [showSymptomModal, setShowSymptomModal] = useState(false);
   const { diaryEntriesUsed, aiAnalysisUsed, canAddDiaryEntry, canUseAI, loading: usageLoading, refresh: refreshUsage } = useFreePlanUsage();
+  
+  // State for subscription panel expansion
+  const [subscriptionPanelExpanded, setSubscriptionPanelExpanded] = useState(false);
+  const subscriptionPanelRef = useRef<SubscriptionPlanPanelRef>(null);
 
   // Fetch user and profile data on component mount
   useEffect(() => {
     const fetchUserData = async () => {
       try {
+        setUserLoading(true);
         const supabase = await getSupabaseClient();
         
         // Get current user
@@ -243,6 +249,8 @@ export default function Dashboard() {
         }
       } catch (error) {
         logError('[Dashboard] Error fetching user data:', error);
+      } finally {
+        setUserLoading(false);
       }
     };
     
@@ -266,7 +274,17 @@ export default function Dashboard() {
     setShowSymptomModal(true);
   };
 
-  if (patientsLoading) {
+  const handleUpgradeClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setSubscriptionPanelExpanded(true);
+    // Use setTimeout to ensure state update happens before focus
+    setTimeout(() => {
+      subscriptionPanelRef.current?.focus();
+    }, 100);
+  };
+
+  // Show skeleton loading while any data is loading
+  if (userLoading || patientsLoading || usageLoading || subscriptionLoading) {
     return (
       <Layout title="Home">
         <div className="space-y-6 px-4 py-6 sm:px-0">
@@ -278,6 +296,43 @@ export default function Dashboard() {
               <Skeleton className="h-6 w-1/3" />
             </div>
           </div>
+          
+          {/* Subscription Plan Skeleton */}
+          <div className="bg-white shadow-sm rounded-xl p-6 border border-gray-200">
+            <Skeleton className="h-6 w-1/4 mb-4" />
+            <div className="space-y-3">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+            </div>
+          </div>
+          
+          {/* Free Plan Usage Skeleton */}
+          <div className="bg-white shadow-sm rounded-xl p-6 border border-gray-200">
+            <Skeleton className="h-6 w-1/3 mb-4" />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center">
+                  <Skeleton className="h-5 w-5 rounded mr-3" />
+                  <div>
+                    <Skeleton className="h-4 w-32 mb-1" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                </div>
+                <Skeleton className="h-6 w-16" />
+              </div>
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center">
+                  <Skeleton className="h-5 w-5 rounded mr-3" />
+                  <div>
+                    <Skeleton className="h-4 w-24 mb-1" />
+                    <Skeleton className="h-3 w-28" />
+                  </div>
+                </div>
+                <Skeleton className="h-6 w-16" />
+              </div>
+            </div>
+          </div>
+          
           {/* Patient Cards Skeleton */}
           {Array.from({ length: 2 }).map((_, idx) => (
             <div key={idx} className="bg-background-default shadow-lg rounded-xl p-6 border border-border">
@@ -323,9 +378,18 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Subscription Plan Banner */}
-          {isFreePlan && (
-            <div className="my-4">
+          {/* Free Plan Features Section */}
+          {isFreePlan && !usageLoading && (
+            <div className="space-y-4">
+              {/* Free Plan Features */}
+              <div className="bg-white shadow-sm rounded-xl p-6 border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Free Plan Features</h3>
+                <p className="text-gray-600 mb-4">
+                  Add your first person to start using MiKare's features and experience the power of AI-powered health tracking.
+                </p>
+              </div>
+              
+              {/* Free Plan Limitations */}
               <SubscriptionPlanPanel
                 currentPlanKey="free"
                 region={normalizeRegion(getCurrentRegion() || undefined)}
@@ -379,24 +443,57 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Subscription Plan Banner */}
-        {isFreePlan && (
-          <div className="my-4">
-            <SubscriptionPlanPanel
-              currentPlanKey="free"
-              region={normalizeRegion(getCurrentRegion() || undefined)}
-              onSubscribe={() => {}}
-              initialExpanded={false}
-            />
+        {/* Free Plan Features Section */}
+        {isFreePlan && !usageLoading && (
+          <div className="space-y-4">
+            {/* Welcome Message for New Users */}
+            {patients.length === 1 && diaryEntriesUsed === 0 && aiAnalysisUsed === 0 && (
+              <div className="bg-gradient-to-r from-teal-50 to-blue-50 border border-teal-200 rounded-xl p-6">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center">
+                      <span className="text-teal-600 text-lg">🎉</span>
+                    </div>
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-lg font-semibold text-teal-900 mb-2">
+                      Welcome to MiKare!
+                    </h3>
+                    <p className="text-teal-800 mb-4">
+                      You've added your first person to MiKare. Now let's get started with tracking your health journey! 
+                      Try these features to experience the power of AI-powered health management.
+                    </p>
+                    <div className="space-y-3">
+                      <div className="flex items-center">
+                        <div className="w-6 h-6 bg-teal-100 rounded-full flex items-center justify-center mr-3">
+                          <span className="text-teal-600 text-xs font-bold">1</span>
+                        </div>
+                        <span className="text-teal-800">Add your first diary entry to record health events</span>
+                      </div>
+                      <div className="flex items-center">
+                        <div className="w-6 h-6 bg-teal-100 rounded-full flex items-center justify-center mr-3">
+                          <span className="text-teal-600 text-xs font-bold">2</span>
+                        </div>
+                        <span className="text-teal-800">Use AI analysis to get insights and suggestions (available after adding a diary entry)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             
-            {/* Free Plan Usage Status */}
-            <div className="bg-white shadow-sm rounded-xl p-6 mt-4 border border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Free Plan Usage</h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
+            {/* Free Plan Features */}
+            <div className="bg-white shadow-sm rounded-xl p-6 border border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Free Plan Features</h3>
+              
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center">
                     <FileText className="h-5 w-5 text-teal-600 mr-3" />
-                    <span className="text-gray-700">Add Diary Entry</span>
+                    <div>
+                      <span className="text-gray-700 font-medium">Add Diary Entry</span>
+                      <p className="text-xs text-gray-500 mt-1">Record your first health note</p>
+                    </div>
                   </div>
                   <div className="flex items-center">
                     {usageLoading ? (
@@ -404,21 +501,31 @@ export default function Dashboard() {
                     ) : diaryEntriesUsed > 0 ? (
                       <div className="flex items-center text-green-600">
                         <Check className="h-4 w-4 mr-1" />
-                        <span className="text-sm font-medium">Completed</span>
+                        <span className="text-sm font-medium line-through">Completed</span>
                       </div>
+                    ) : patients.length > 0 ? (
+                      <button
+                        onClick={() => {
+                          const firstPatient = patients[0];
+                          navigate(`/patient/${firstPatient.id}`);
+                        }}
+                        className="px-3 py-1 bg-teal-600 hover:bg-teal-700 text-white text-sm rounded-md transition-colors duration-200"
+                      >
+                        Try Now
+                      </button>
                     ) : (
-                      <div className="flex items-center text-gray-500">
-                        <X className="h-4 w-4 mr-1" />
-                        <span className="text-sm">Available</span>
-                      </div>
+                      <span className="text-sm text-gray-500">Add a person first</span>
                     )}
                   </div>
                 </div>
                 
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center">
                     <AlertCircle className="h-5 w-5 text-purple-600 mr-3" />
-                    <span className="text-gray-700">AI Analysis</span>
+                    <div>
+                      <span className="text-gray-700 font-medium">AI Analysis</span>
+                      <p className="text-xs text-gray-500 mt-1">Get AI insights on your health data</p>
+                    </div>
                   </div>
                   <div className="flex items-center">
                     {usageLoading ? (
@@ -426,13 +533,22 @@ export default function Dashboard() {
                     ) : aiAnalysisUsed > 0 ? (
                       <div className="flex items-center text-green-600">
                         <Check className="h-4 w-4 mr-1" />
-                        <span className="text-sm font-medium">Completed</span>
+                        <span className="text-sm font-medium line-through">Completed</span>
                       </div>
+                    ) : diaryEntriesUsed > 0 && patients.length > 0 ? (
+                      <button
+                        onClick={() => {
+                          const firstPatient = patients[0];
+                          navigate(`/patient/${firstPatient.id}`);
+                        }}
+                        className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-md transition-colors duration-200"
+                      >
+                        Try Now
+                      </button>
                     ) : (
-                      <div className="flex items-center text-gray-500">
-                        <X className="h-4 w-4 mr-1" />
-                        <span className="text-sm">Available</span>
-                      </div>
+                      <span className="text-sm text-gray-500">
+                        {diaryEntriesUsed === 0 ? "Add diary entry first" : "Add a person first"}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -442,11 +558,26 @@ export default function Dashboard() {
                 <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-sm text-blue-800">
                     Great! You've tried MiKare's features. 
-                    <a href="/settings" className="ml-1 font-medium underline">Upgrade your plan</a> to continue using these features and unlock unlimited access.
+                    <button 
+                      onClick={handleUpgradeClick}
+                      className="ml-1 font-medium underline hover:text-blue-900"
+                    >
+                      Upgrade your plan
+                    </button> to continue using these features and unlock unlimited access.
                   </p>
                 </div>
               )}
             </div>
+            
+            {/* Free Plan Limitations */}
+            <SubscriptionPlanPanel
+              ref={subscriptionPanelRef}
+              currentPlanKey="free"
+              region={normalizeRegion(getCurrentRegion() || undefined)}
+              onSubscribe={() => {}}
+              expanded={subscriptionPanelExpanded}
+              onExpandedChange={setSubscriptionPanelExpanded}
+            />
           </div>
         )}
 

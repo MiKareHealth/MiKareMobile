@@ -8,11 +8,14 @@ export type PatientSummary = Pick<Patient, 'id' | 'full_name' | 'photo_url' | 'r
 interface PatientsContextType {
   patients: PatientSummary[];
   loading: boolean;
+  error: Error | null;
   refreshPatients: () => Promise<void>;
-  addPatient: (patient: PatientSummary) => void;
-  updatePatient: (patient: PatientSummary) => void;
-  removePatient: (patientId: string) => void;
-  debugFetchPatients?: () => Promise<void>; // Optional debug function
+  addPatient: (patient: Omit<PatientSummary, 'id'>) => Promise<PatientSummary>;
+  updatePatient: (patient: PatientSummary) => Promise<PatientSummary>;
+  removePatient: (patientId: string) => Promise<string>;
+  isAddingPatient: boolean;
+  isUpdatingPatient: boolean;
+  isDeletingPatient: boolean;
 }
 
 const PatientsContext = createContext<PatientsContextType | undefined>(undefined);
@@ -20,20 +23,40 @@ const PatientsContext = createContext<PatientsContextType | undefined>(undefined
 export function PatientsProvider({ children }: { children: React.ReactNode }) {
   const [patients, setPatients] = useState<PatientSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [isAddingPatient, setIsAddingPatient] = useState(false);
+  const [isUpdatingPatient, setIsUpdatingPatient] = useState(false);
+  const [isDeletingPatient, setIsDeletingPatient] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const patientsRef = useRef<PatientSummary[]>([]);
+  const initialFetchCompletedRef = useRef(false);
+  const lastFetchTimeRef = useRef(0);
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
   // Keep ref in sync with state
   useEffect(() => {
     patientsRef.current = patients;
   }, [patients]);
 
-  const fetchPatients = useCallback(async () => {
+  const fetchPatients = useCallback(async (force = false) => {
+    const now = Date.now();
+    
+    // Skip fetch if we have recent data and not forcing
+    if (!force && patients.length > 0 && (now - lastFetchTimeRef.current) < CACHE_DURATION) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[PatientsContext] Using cached patients data');
+      }
+      return;
+    }
+
     if (process.env.NODE_ENV === 'development') {
       console.log('[PatientsContext] fetchPatients: starting...');
     }
+    
     try {
       setLoading(true);
+      setError(null);
+      
       const supabase = await getSupabaseClient();
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -47,6 +70,7 @@ export function PatientsProvider({ children }: { children: React.ReactNode }) {
         }
         setPatients([]);
         setLoading(false);
+        initialFetchCompletedRef.current = true;
         return;
       }
 
@@ -79,16 +103,20 @@ export function PatientsProvider({ children }: { children: React.ReactNode }) {
       }
       
       setPatients(patientsData || []);
+      lastFetchTimeRef.current = now;
+      initialFetchCompletedRef.current = true;
     } catch (error) {
       console.error('[PatientsContext] fetchPatients: error', error);
+      setError(error as Error);
       setPatients([]);
+      initialFetchCompletedRef.current = true;
     } finally {
       if (process.env.NODE_ENV === 'development') {
         console.log('[PatientsContext] fetchPatients: completed, loading set to false');
       }
       setLoading(false);
     }
-  }, []); // Empty dependency array since this function doesn't depend on any state
+  }, [patients.length]);
 
   // Initial fetch and auth state listener - only run once on mount
   useEffect(() => {
@@ -112,10 +140,9 @@ export function PatientsProvider({ children }: { children: React.ReactNode }) {
         if (user) {
           console.log('[PatientsContext] User already authenticated, fetching patients');
           try {
-            await fetchPatients();
+            await fetchPatients(true); // Force fetch for initial load
           } catch (error) {
             console.error('[PatientsContext] Initial fetch failed:', error);
-            // If initial fetch fails, we'll rely on the fallback mechanism
             setLoading(false);
           }
         } else {
@@ -135,58 +162,19 @@ export function PatientsProvider({ children }: { children: React.ReactNode }) {
           
           if (event === 'SIGNED_IN' && session?.user) {
             if (process.env.NODE_ENV === 'development') {
-              console.log('[PatientsContext] User signed in, waiting for auth to be fully established...');
+              console.log('[PatientsContext] User signed in, fetching patients');
             }
-            // Clear patients first to ensure clean state
             setPatients([]);
             setLoading(true);
-            // Increased delay to ensure auth is fully established and context is ready
-            // Also add retry logic in case the first attempt fails
-            let retryCount = 0;
-            const maxRetries = 3;
-            
-            const attemptFetch = async () => {
-              if (!isMounted) return;
-              
-              try {
-                if (process.env.NODE_ENV === 'development') {
-                  console.log('[PatientsContext] Attempting to fetch patients, retry:', retryCount);
-                }
-                await fetchPatients();
-              } catch (error) {
-                console.error('[PatientsContext] Fetch attempt failed:', error);
-                retryCount++;
-                if (retryCount < maxRetries && isMounted) {
-                  if (process.env.NODE_ENV === 'development') {
-                    console.log('[PatientsContext] Retrying in 1 second...');
-                  }
-                  setTimeout(attemptFetch, 1000);
-                } else if (isMounted) {
-                  console.error('[PatientsContext] Max retries reached, giving up');
-                  setLoading(false);
-                }
-              }
-            };
-            
-            // Initial delay before first attempt
-            setTimeout(attemptFetch, 1000);
+            initialFetchCompletedRef.current = false;
+            await fetchPatients(true); // Force fetch for new login
           } else if (event === 'SIGNED_OUT') {
             if (process.env.NODE_ENV === 'development') {
               console.log('[PatientsContext] User signed out, clearing patients');
             }
             setPatients([]);
             setLoading(false);
-          } else if (event === 'TOKEN_REFRESHED') {
-            if (process.env.NODE_ENV === 'development') {
-              console.log('[PatientsContext] Token refreshed, checking if we need to refetch patients');
-            }
-            // Only refetch if we don't have patients and user is authenticated
-            if (isMounted && patientsRef.current.length === 0 && session?.user) {
-              if (process.env.NODE_ENV === 'development') {
-                console.log('[PatientsContext] Refetching patients after token refresh');
-              }
-              fetchPatients();
-            }
+            initialFetchCompletedRef.current = false;
           }
         });
         
@@ -211,11 +199,11 @@ export function PatientsProvider({ children }: { children: React.ReactNode }) {
         authListener.subscription.unsubscribe();
       }
     };
-  }, []); // Remove fetchPatients dependency to prevent infinite loop
+  }, []); // Empty dependency array to run only once
 
-  // Listen for region changes and re-fetch patients if needed
+  // Handle region changes
   useEffect(() => {
-    if (!authChecked) return; // Don't start region polling until auth is checked
+    if (!authChecked) return;
     
     let lastRegion = localStorage.getItem('mikare_selected_region');
     let interval: NodeJS.Timeout | null = null;
@@ -230,97 +218,132 @@ export function PatientsProvider({ children }: { children: React.ReactNode }) {
         lastRegion = currentRegion;
         setPatients([]);
         setLoading(true);
-        // Only fetch if user is authenticated
-        const supabase = await getSupabaseClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user && isMounted) {
-          await fetchPatients();
-        } else if (isMounted) {
-          setLoading(false);
-        }
+        await fetchPatients(true); // Force fetch for region change
       }
     };
 
-    interval = setInterval(checkRegion, 1000); // Poll every second
+    interval = setInterval(checkRegion, 1000);
 
     return () => {
       isMounted = false;
       if (interval) clearInterval(interval);
     };
-  }, [authChecked]); // Remove fetchPatients dependency
+  }, [authChecked, fetchPatients]);
 
-  // Fallback mechanism: if we're authenticated but have no patients after a delay, try to fetch again
-  useEffect(() => {
-    if (!authChecked || patients.length > 0) return;
+  // Optimized add patient function
+  const addPatient = useCallback(async (patient: Omit<PatientSummary, 'id'>): Promise<PatientSummary> => {
+    setIsAddingPatient(true);
+    setError(null);
     
-    let timeout: NodeJS.Timeout;
-    let retryTimeout: NodeJS.Timeout;
-    let isMounted = true;
-    let retryCount = 0;
-    const maxRetries = 3;
-    
-    const fallbackFetch = async () => {
-      if (!isMounted) return;
-      
-      console.log('[PatientsContext] Fallback: checking if we should fetch patients, attempt:', retryCount + 1);
+    try {
       const supabase = await getSupabaseClient();
       const { data: { user } } = await supabase.auth.getUser();
       
-      if (user && isMounted && patients.length === 0 && !loading) {
-        try {
-          console.log('[PatientsContext] Fallback: user authenticated but no patients, fetching...');
-          await fetchPatients();
-        } catch (error) {
-          console.error('[PatientsContext] Fallback fetch failed:', error);
-          retryCount++;
-          if (retryCount < maxRetries && isMounted) {
-            console.log('[PatientsContext] Fallback: retrying in 2 seconds...');
-            retryTimeout = setTimeout(fallbackFetch, 2000);
-          }
-        }
-      } else if (isMounted && !user) {
-        // Don't retry if there's no user - this is expected on auth pages
-        console.log('[PatientsContext] Fallback: no authenticated user found, stopping fallback mechanism');
-        return;
+      if (!user) {
+        throw new Error('User not authenticated');
       }
-    };
 
-    timeout = setTimeout(fallbackFetch, 2000); // Wait 2 seconds before first fallback attempt
+      const { data, error } = await supabase
+        .from('patients')
+        .insert([{ ...patient, user_id: user.id }])
+        .select()
+        .single();
 
-    return () => {
-      isMounted = false;
-      if (timeout) clearTimeout(timeout);
-      if (retryTimeout) clearTimeout(retryTimeout);
-    };
-  }, [authChecked, patients.length, loading]); // Remove fetchPatients dependency
+      if (error) {
+        throw error;
+      }
 
-  const addPatient = (patient: PatientSummary) => {
-    setPatients((prev) => [patient, ...prev]);
-  };
+      // Optimistically update the local state
+      setPatients(prev => [data, ...prev]);
+      
+      return data;
+    } catch (error) {
+      setError(error as Error);
+      throw error;
+    } finally {
+      setIsAddingPatient(false);
+    }
+  }, []);
 
-  const updatePatient = (patient: PatientSummary) => {
-    setPatients((prev) => prev.map((p) => (p.id === patient.id ? patient : p)));
-  };
+  // Optimized update patient function
+  const updatePatient = useCallback(async (patient: PatientSummary): Promise<PatientSummary> => {
+    setIsUpdatingPatient(true);
+    setError(null);
+    
+    try {
+      const supabase = await getSupabaseClient();
+      
+      const { data, error } = await supabase
+        .from('patients')
+        .update(patient)
+        .eq('id', patient.id)
+        .select()
+        .single();
 
-  const removePatient = (patientId: string) => {
-    setPatients((prev) => prev.filter((p) => p.id !== patientId));
+      if (error) {
+        throw error;
+      }
+
+      // Optimistically update the local state
+      setPatients(prev => prev.map(p => p.id === patient.id ? data : p));
+      
+      return data;
+    } catch (error) {
+      setError(error as Error);
+      throw error;
+    } finally {
+      setIsUpdatingPatient(false);
+    }
+  }, []);
+
+  // Optimized remove patient function
+  const removePatient = useCallback(async (patientId: string): Promise<string> => {
+    setIsDeletingPatient(true);
+    setError(null);
+    
+    try {
+      const supabase = await getSupabaseClient();
+      
+      const { error } = await supabase
+        .from('patients')
+        .delete()
+        .eq('id', patientId);
+
+      if (error) {
+        throw error;
+      }
+
+      // Optimistically update the local state
+      setPatients(prev => prev.filter(p => p.id !== patientId));
+      
+      return patientId;
+    } catch (error) {
+      setError(error as Error);
+      throw error;
+    } finally {
+      setIsDeletingPatient(false);
+    }
+  }, []);
+
+  const contextValue: PatientsContextType = {
+    patients,
+    loading,
+    error,
+    refreshPatients: () => fetchPatients(true),
+    addPatient,
+    updatePatient,
+    removePatient,
+    isAddingPatient,
+    isUpdatingPatient,
+    isDeletingPatient,
   };
 
   return (
-    <PatientsContext.Provider
-      value={{ 
-        patients, 
-        loading, 
-        refreshPatients: fetchPatients, 
-        addPatient, 
-        updatePatient, 
-        removePatient
-      }}
-    >
+    <PatientsContext.Provider value={contextValue}>
       {children}
     </PatientsContext.Provider>
   );
-};
+}
 
 export function usePatients() {
   const ctx = useContext(PatientsContext);

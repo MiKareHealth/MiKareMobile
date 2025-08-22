@@ -233,7 +233,7 @@ export default function PatientDetails() {
           refreshUsage();
         }}
         editEntry={selectedDiaryEntry}
-        viewOnly={selectedDiaryEntry !== null && isFreePlan}
+        viewOnly={false}
       />
 
       <SymptomModal

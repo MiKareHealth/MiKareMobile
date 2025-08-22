@@ -21,37 +21,33 @@ export default function AddPatient() {
   const [supabaseClient, setSupabaseClient] = useState<any>(null);
   const [currentRegion, setCurrentRegion] = useState<Region | null>(null);
   const [storedRegion, setStoredRegion] = useState<Region | null>(null);
-  const { refreshPatients } = usePatients();
+  const { addPatient, isAddingPatient } = usePatients();
+
+  // Use React Query loading state for patient creation
+  const isLoading = loading || isAddingPatient;
 
   useEffect(() => {
     const initializeClient = async () => {
       try {
-        // Get the current region from localStorage
-        const currentRegion = getCurrentRegion();
-        log('Current region from localStorage:', currentRegion);
-        
-        // Initialize client with the current region
-        let client = await getSupabaseClient();
-        log('Initialized Supabase client for region:', currentRegion);
-        
+        const client = await getSupabaseClient();
         setSupabaseClient(client);
-        setCurrentRegion(currentRegion);
         
-        // Get the current user
-        const { data: { user }, error: userError } = await client.auth.getUser();
-        if (userError) throw userError;
-        if (!user) throw new Error('Not authenticated');
-        
-        log('Current user:', user.id);
-        log('User metadata:', user.user_metadata);
+        const { data: { user } } = await client.auth.getUser();
+        if (!user) {
+          navigate('/signin');
+          return;
+        }
         setUser(user);
+        
+        const region = getCurrentRegion();
+        setCurrentRegion(region);
+        setStoredRegion(localStorage.getItem('mikare_selected_region') as Region);
       } catch (err) {
-        logError('Error initializing Supabase client:', err);
-        setError('Failed to initialize client. Please try signing in again.');
-        navigate('/signin');
+        logError('Error initializing client:', err);
+        setError('Failed to initialize application');
       }
     };
-
+    
     initializeClient();
   }, [navigate]);
 
@@ -84,15 +80,15 @@ export default function AddPatient() {
 
     try {
       const formData = new FormData(e.currentTarget);
+      
       // Verify user is still authenticated
       const { data: { user: currentUser }, error: userError } = await supabaseClient.auth.getUser();
       if (userError) throw userError;
       if (!currentUser) throw new Error('Not authenticated');
       if (currentUser.id !== user.id) throw new Error('User session mismatch');
 
-      // 1. Create patient record (without photo_url)
-      const patientData: Partial<Patient> = {
-        user_id: user.id,
+      // Prepare patient data
+      const patientData = {
         full_name: formData.get('full_name') as string,
         dob: formData.get('dob') as string,
         gender: formData.get('gender') as 'Male' | 'Female' | 'Other',
@@ -106,104 +102,59 @@ export default function AddPatient() {
 
       console.log('🔍 ADD PATIENT: About to insert patient:', patientData.full_name);
       
-      const { data: inserted, error: insertError } = await supabaseClient
-        .from('patients')
-        .insert(patientData)
-        .select('id')
-        .single();
-
-      if (insertError) {
-        console.error('🔍 ADD PATIENT: Error inserting patient:', insertError);
-        logError('Error inserting patient:', insertError);
-        throw insertError;
-      }
-      const patientId = inserted?.id;
-      if (!patientId) throw new Error('Failed to get new patient ID');
+      // Use the React Query-based addPatient function
+      const newPatient = await addPatient(patientData);
       
-      console.log('🔍 ADD PATIENT: Patient created successfully with ID:', patientId);
+      console.log('🔍 ADD PATIENT: Patient created successfully with ID:', newPatient.id);
 
-      // Ensure patient record is visible to RLS
-      let rlsVisible = false;
-      for (let i = 0; i < 5; i++) {
-        const { data: check, error: checkError } = await supabaseClient
-          .from('patients')
-          .select('id')
-          .eq('id', patientId)
-          .eq('user_id', user.id)
-          .single();
-        if (check && check.id === patientId) {
-          rlsVisible = true;
-          break;
-        }
-        await new Promise(res => setTimeout(res, 100));
-      }
-      if (!rlsVisible) throw new Error('Patient record not visible to RLS after insert');
-
-      // Navigate to patient details page immediately (show skeleton loading)
-      navigate(`/patient/${patientId}`);
-
-      // Wait 2 seconds for RLS propagation before uploading photo
-      await new Promise(res => setTimeout(res, 2000));
-
-      // 2. Upload photo if present
-      let photoUrl = null;
+      // Handle photo upload if provided
       if (photoFile) {
         try {
-          // Optionally show a loading state here if you want
-          const fileName = `${user.id}/${photoFile.name}`;
-          log('Uploading photo:', { fileName, userId: user.id });
+          const fileExt = photoFile.name.split('.').pop();
+          const fileName = `${newPatient.id}-${Date.now()}.${fileExt}`;
+          const filePath = `patient-photos/${fileName}`;
 
-          // Upload the file (assume bucket exists)
           const { error: uploadError } = await supabaseClient.storage
-            .from('user-photos')
-            .upload(fileName, photoFile, {
-              cacheControl: '3600',
-              upsert: false
-            });
+            .from('patient-photos')
+            .upload(filePath, photoFile);
+
           if (uploadError) {
-            logError('Photo upload error details:', {
-              fileName,
-              userId: user.id,
-              uploadError
-            });
-            throw uploadError;
+            console.error('🔍 ADD PATIENT: Error uploading photo:', uploadError);
+            logError('Error uploading photo:', uploadError);
+            // Don't throw here - patient was created successfully
+          } else {
+            // Get public URL and update patient record
+            const { data: { publicUrl } } = supabaseClient.storage
+              .from('patient-photos')
+              .getPublicUrl(filePath);
+
+            // Update the patient with the photo URL
+            const { error: updateError } = await supabaseClient
+              .from('patients')
+              .update({ photo_url: publicUrl })
+              .eq('id', newPatient.id);
+
+            if (updateError) {
+              console.error('🔍 ADD PATIENT: Error updating patient with photo:', updateError);
+              logError('Error updating patient with photo:', updateError);
+            } else {
+              console.log('🔍 ADD PATIENT: Photo uploaded and patient updated successfully');
+            }
           }
-
-          const { data: { publicUrl } } = supabaseClient.storage
-            .from('user-photos')
-            .getPublicUrl(fileName);
-          photoUrl = publicUrl;
-
-          // 3. Update patient record with photo_url
-          const { error: updateError } = await supabaseClient
-            .from('patients')
-            .update({ photo_url: photoUrl })
-            .eq('id', patientId);
-          if (updateError) throw updateError;
-        } catch (uploadErr) {
-          logError('Error handling photo upload:', uploadErr);
-          // Continue without the photo if upload fails
+        } catch (photoError) {
+          console.error('🔍 ADD PATIENT: Error handling photo:', photoError);
+          logError('Error handling photo:', photoError);
+          // Don't throw here - patient was created successfully
         }
       }
 
-      await refreshPatients();
-      // Poll for up to 2 seconds for the new patient to appear in context
-      const start = Date.now();
-      let found = false;
-      while (Date.now() - start < 2000) {
-        // Use the latest patients from context
-        const { patients } = require('../contexts/PatientsContext');
-        // Check if the new patient is present
-        if (patients && patients.some((p: any) => p.id === patientId)) {
-          found = true;
-          break;
-        }
-        await new Promise(res => setTimeout(res, 100));
-      }
-      navigate('/');
+      // Navigate to the new patient's page
+      navigate(`/patient/${newPatient.id}`);
+      
     } catch (err) {
+      console.error('🔍 ADD PATIENT: Error creating patient:', err);
       logError('Error creating patient:', err);
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : 'Failed to create patient');
     } finally {
       setLoading(false);
     }
@@ -436,10 +387,10 @@ export default function AddPatient() {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={isLoading}
                   className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 border border-transparent rounded-md shadow-sm"
                 >
-                  {loading ? 'Saving...' : 'Save Person'}
+                  {isLoading ? 'Saving...' : 'Save Person'}
                 </button>
               </div>
             </form>

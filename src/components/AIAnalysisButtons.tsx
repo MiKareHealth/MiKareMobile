@@ -7,6 +7,7 @@ import type { DiaryEntry, Symptom } from '../types/database';
 import { error as logError } from '../utils/logger';
 import AIDuplicateWarningModal from './AIDuplicateWarningModal';
 import { useFreePlanUsage } from '../hooks/useFreePlanUsage';
+import { useSubscription } from '../hooks/useSubscription';
 
 interface AIAnalysisButtonsProps {
   patientId: string;
@@ -35,6 +36,7 @@ export default function AIAnalysisButtons({
   const [pendingAnalysisType, setPendingAnalysisType] = useState<string | null>(null);
   const [previousEntry, setPreviousEntry] = useState<DiaryEntry | null>(null);
   const { canUseAI, refresh: refreshUsage } = useFreePlanUsage();
+  const { isFreePlan } = useSubscription();
 
   // Check if there's already an AI entry of the same type for today
   const checkForDuplicateAIEntry = (type: string): DiaryEntry | null => {
@@ -211,7 +213,7 @@ export default function AIAnalysisButtons({
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-4">
         <button
           onClick={() => handleAnalysis('symptom-analysis')}
-          disabled={!!loading || !autoCreate || !canUseAI}
+          disabled={!!loading || (!autoCreate && !(isFreePlan && canUseAI)) || (isFreePlan && !canUseAI)}
           className="flex items-center justify-center p-2 sm:p-4 bg-gradient-to-br from-indigo-50 via-purple-50/50 to-indigo-50/30 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 hover:translate-y-[-2px] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
         >
           <div className="text-center">
@@ -219,45 +221,57 @@ export default function AIAnalysisButtons({
             <h3 className="text-xs sm:text-sm font-medium text-indigo-900">
               {loading === 'symptom-insights' ? 'Analysing...' : 'Symptom Insights'}
             </h3>
+            {isFreePlan && !canUseAI && (
+              <p className="text-xs text-gray-500 mt-1">Free trial used</p>
+            )}
           </div>
         </button>
 
         <button
           onClick={() => handleAnalysis('questions')}
-          disabled={!!loading || !autoCreate || !canUseAI}
-          className="flex items-center justify-center p-2 sm:p-4 bg-gradient-to-br from-emerald-50 via-teal-50/50 to-emerald-50/30 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 hover:translate-y-[-2px] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
-        >
-          <div className="text-center">
-            <Brain className="h-4 w-4 sm:h-6 sm:w-6 text-emerald-600 mx-auto mb-1" />
-            <h3 className="text-xs sm:text-sm font-medium text-emerald-900">
-              {loading === 'questions' ? 'Generating...' : 'Suggest Questions'}
-            </h3>
-          </div>
-        </button>
-
-        <button
-          onClick={() => handleAnalysis('terminology')}
-          disabled={!!loading || !autoCreate || !canUseAI}
-          className="flex items-center justify-center p-2 sm:p-4 bg-gradient-to-br from-blue-50 via-sky-50/50 to-blue-50/30 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 hover:translate-y-[-2px] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+          disabled={!!loading || (!autoCreate && !(isFreePlan && canUseAI)) || (isFreePlan && !canUseAI)}
+          className="flex items-center justify-center p-2 sm:p-4 bg-gradient-to-br from-blue-50 via-cyan-50/50 to-blue-50/30 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 hover:translate-y-[-2px] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
         >
           <div className="text-center">
             <Brain className="h-4 w-4 sm:h-6 sm:w-6 text-blue-600 mx-auto mb-1" />
             <h3 className="text-xs sm:text-sm font-medium text-blue-900">
-              {loading === 'terminology' ? 'Explaining...' : 'Explain Terms'}
+              {loading === 'questions' ? 'Generating...' : 'Suggested Questions'}
             </h3>
+            {isFreePlan && !canUseAI && (
+              <p className="text-xs text-gray-500 mt-1">Free trial used</p>
+            )}
           </div>
         </button>
 
         <button
-          onClick={() => handleAnalysis('trends')}
-          disabled={!!loading || !autoCreate || !canUseAI}
-          className="flex items-center justify-center p-2 sm:p-4 bg-gradient-to-br from-amber-50 via-yellow-50/50 to-amber-50/30 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 hover:translate-y-[-2px] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+          onClick={() => handleAnalysis('summary')}
+          disabled={!!loading || (!autoCreate && !(isFreePlan && canUseAI)) || (isFreePlan && !canUseAI)}
+          className="flex items-center justify-center p-2 sm:p-4 bg-gradient-to-br from-green-50 via-emerald-50/50 to-green-50/30 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 hover:translate-y-[-2px] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
         >
           <div className="text-center">
-            <Brain className="h-4 w-4 sm:h-6 sm:w-6 text-amber-600 mx-auto mb-1" />
-            <h3 className="text-xs sm:text-sm font-medium text-amber-900">
-              {loading === 'trends' ? 'Analyzing...' : 'Health Summary'}
+            <Brain className="h-4 w-4 sm:h-6 sm:w-6 text-green-600 mx-auto mb-1" />
+            <h3 className="text-xs sm:text-sm font-medium text-green-900">
+              {loading === 'summary' ? 'Summarising...' : 'Health Summary'}
             </h3>
+            {isFreePlan && !canUseAI && (
+              <p className="text-xs text-gray-500 mt-1">Free trial used</p>
+            )}
+          </div>
+        </button>
+
+        <button
+          onClick={() => handleAnalysis('recommendations')}
+          disabled={!!loading || (!autoCreate && !(isFreePlan && canUseAI)) || (isFreePlan && !canUseAI)}
+          className="flex items-center justify-center p-2 sm:p-4 bg-gradient-to-br from-orange-50 via-amber-50/50 to-orange-50/30 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 hover:translate-y-[-2px] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+        >
+          <div className="text-center">
+            <Brain className="h-4 w-4 sm:h-6 sm:w-6 text-orange-600 mx-auto mb-1" />
+            <h3 className="text-xs sm:text-sm font-medium text-orange-900">
+              {loading === 'recommendations' ? 'Analysing...' : 'Recommendations'}
+            </h3>
+            {isFreePlan && !canUseAI && (
+              <p className="text-xs text-gray-500 mt-1">Free trial used</p>
+            )}
           </div>
         </button>
       </div>

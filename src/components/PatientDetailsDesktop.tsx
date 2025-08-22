@@ -15,7 +15,8 @@ import {
   X,
   AlertCircle,
   Printer,
-  Edit
+  Edit,
+  Info
 } from 'lucide-react';
 import { MdOutlineSick } from 'react-icons/md';
 import Layout from './Layout';
@@ -35,6 +36,7 @@ import { getSupabaseClient } from '../lib/supabaseClient';
 import SubscriptionFeatureBlock from './SubscriptionFeatureBlock';
 import { useSubscription } from '../hooks/useSubscription';
 import Skeleton from './Skeleton';
+import { useFreePlanUsage } from '../hooks/useFreePlanUsage';
 
 interface PatientDetailsDesktopProps {
   patient: Patient | null;
@@ -101,6 +103,7 @@ export default function PatientDetailsDesktop({
 }: PatientDetailsDesktopProps) {
   const { formatDate } = useUserPreferences();
   const { isFreePlan } = useSubscription();
+  const { canAddDiaryEntry, canUseAI } = useFreePlanUsage();
   
   // Photo upload states
   const [showPhotoModal, setShowPhotoModal] = useState(false);
@@ -377,7 +380,7 @@ export default function PatientDetailsDesktop({
             
             {/* Action Buttons */}
             <div className="flex justify-end space-x-3">
-              <SubscriptionFeatureBlock isBlocked={isFreePlan} featureName="Add diary entry">
+              <SubscriptionFeatureBlock isBlocked={isFreePlan && !canAddDiaryEntry} featureName="Add diary entry">
                 <button
                   onClick={onAddDiaryEntry}
                   className="inline-flex items-center px-4 py-2.5 bg-gradient-to-r from-primary to-secondary hover:from-primary-dark hover:to-secondary-dark text-white text-sm font-medium rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
@@ -466,7 +469,7 @@ export default function PatientDetailsDesktop({
                       <p className="mt-2 text-sm text-text-secondary max-w-sm mx-auto">
                         Keep track of appointments, diagnoses, and treatments by adding diary entries.
                       </p>
-                      <SubscriptionFeatureBlock isBlocked={isFreePlan} featureName="Add diary entry">
+                      <SubscriptionFeatureBlock isBlocked={isFreePlan && !canAddDiaryEntry} featureName="Add diary entry">
                         <button
                           onClick={onAddDiaryEntry}
                           className="mt-6 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90"
@@ -865,7 +868,7 @@ export default function PatientDetailsDesktop({
               </div>
               <div className="flex space-x-3">
                 {/* Diary Entry Button - Teal */}
-                <SubscriptionFeatureBlock isBlocked={isFreePlan} featureName="Add diary entry">
+                <SubscriptionFeatureBlock isBlocked={isFreePlan && !canAddDiaryEntry} featureName="Add diary entry">
                   <button
                     onClick={onAddDiaryEntry}
                     className="bg-gradient-to-br from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center px-6 py-4"
@@ -957,7 +960,16 @@ export default function PatientDetailsDesktop({
                       <p className="mt-1">{patient.address}</p>
                     </div>
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700">Notes</label>
+                      <label className="block text-sm font-medium text-gray-700 flex items-center">
+                        Notes
+                        <div className="relative ml-1 group">
+                          <Info className="h-4 w-4 text-gray-400 cursor-help" />
+                          <div className="absolute left-full top-1/2 transform -translate-y-1/2 ml-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none w-80 md:w-96 lg:w-[28rem] z-10">
+                            Consider adding family history, allergies, cultural background, religious preferences, nationality, or other relevant details that healthcare providers should know.
+                            <div className="absolute top-1/2 right-full transform -translate-y-1/2 w-0 h-0 border-r-4 border-t-4 border-b-4 border-transparent border-r-gray-900"></div>
+                          </div>
+                        </div>
+                      </label>
                       {patient.notes ? (
                         <p className="mt-1 whitespace-pre-wrap">{patient.notes}</p>
                       ) : (
@@ -1005,7 +1017,7 @@ export default function PatientDetailsDesktop({
                   symptoms={symptoms}
                   patient={patient}
                   onSuccess={onRefresh}
-                  autoCreate={!isFreePlan}
+                  autoCreate={!isFreePlan || (isFreePlan && canUseAI)}
                   onOpenDiaryEntry={onEditDiaryEntry}
                 />
               </SubscriptionFeatureBlock>

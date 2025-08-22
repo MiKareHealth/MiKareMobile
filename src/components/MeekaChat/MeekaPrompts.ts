@@ -132,7 +132,92 @@ Would you like me to suggest questions for your next medical visit based on this
 Is there anything else I can help you with?`;
   },
 
-  PRIVACY_REMINDER: `💡 **Privacy Note**: Our conversation is stored in your MiKare health record to help track your health journey. You can delete chat history anytime in Settings → Privacy.`
+  PRIVACY_REMINDER: `💡 **Privacy Note**: Our conversation is stored in your MiKare health record to help track your health journey. You can delete chat history anytime in Settings → Privacy.`,
+
+  FREE_PLAN_ONBOARDING: {
+    WELCOME_NEW_USER: `Hi! Welcome to MiKare! 🎉 I'm Meeka, your AI health assistant. 
+
+I see you've just added your first person to MiKare. Let me help you get started with your free trial! You can:
+
+**🩺 Add your first diary entry** - Record a health event, symptom, or appointment
+**🤖 Try AI analysis** - Get insights on your health data (available after adding a diary entry)
+
+These features help you track patterns and prepare for medical visits. Would you like me to help you add a diary entry to get started?`,
+
+    FIRST_DIARY_ADDED: `Great job! 🎉 You've added your first diary entry. 
+
+Now you can try our **AI analysis features** to get insights from your health data. I can:
+
+• **Analyze symptoms** - Look for patterns and correlations
+• **Suggest questions** - Help prepare for your next doctor visit  
+• **Create summaries** - Get an overview of your health trends
+
+Would you like me to run an AI analysis on your data? Just say something like "analyze my symptoms" or "suggest questions for my doctor."`,
+
+    AI_ANALYSIS_USED: `Excellent! 🎉 You've now experienced MiKare's core features:
+
+✅ **Diary entry** - Track your health events
+✅ **AI analysis** - Get intelligent insights
+
+These are your free trial features! To continue using MiKare and unlock unlimited access to:
+• Unlimited diary entries and AI analysis
+• Advanced health tracking
+• Export features and more
+
+Consider upgrading to a paid plan. Would you like to know more about our subscription options?`,
+
+    USAGE_LIMIT_REACHED: (featureType: 'diary' | 'ai') => {
+      const feature = featureType === 'diary' ? 'diary entries' : 'AI analysis';
+      return `You've used your free ${feature} trial! 🚀
+
+The good news is you've experienced how MiKare can help you track and understand your health. To continue using ${feature} and unlock all features, you can upgrade to a paid plan.
+
+Upgrade to get:
+• Unlimited ${feature}
+• Full access to all health tracking tools
+• Export and sharing capabilities
+• Priority support
+
+Would you like to learn more about our plans?`;
+    },
+
+    GUIDE_TO_NEXT_STEP: (currentStep: 'add_diary' | 'try_ai' | 'upgrade') => {
+      switch (currentStep) {
+        case 'add_diary':
+          return `To get started with MiKare, try adding a diary entry! I can help you record:
+
+• **Symptoms** - Pain, discomfort, or health concerns
+• **Appointments** - Doctor visits or medical consultations  
+• **Medications** - New prescriptions or changes
+• **Notes** - General health observations
+
+Just tell me what you'd like to record, like "I have a headache" or "I saw my doctor today."`;
+
+        case 'try_ai':
+          return `Now that you have some health data, try our AI analysis! I can:
+
+• **Analyze your symptoms** - "analyze my symptoms"
+• **Suggest questions for your doctor** - "what should I ask my doctor"
+• **Create a health summary** - "give me a health summary"
+
+What type of analysis would you like me to run?`;
+
+        case 'upgrade':
+          return `You've completed the free trial experience! 🎉
+
+MiKare can do so much more with a paid subscription:
+• Track unlimited patients and entries
+• Advanced AI insights and recommendations  
+• Export your data to share with doctors
+• Family health management tools
+
+Ready to unlock the full potential of your health data?`;
+
+        default:
+          return `I'm here to help you with your health tracking journey! What would you like to do next?`;
+      }
+    }
+  }
 };
 
 export function buildContextPrompt(patientData: any, recentEntries: any[]): string {

@@ -102,6 +102,41 @@ const createIntentPatterns = (region: string): IntentPatterns => {
       /(?:compare|correlate)\s+(?:my\s+)?(?:symptoms|medications)/i,
       /(?:summary|overview)\s+(?:of)\s+(?:my\s+)?(?:health|symptoms|medications)/i
     ],
+    AI_ANALYSIS: [
+      // General AI analysis patterns
+      /(?:run|do|perform|execute)\s+(?:ai|artificial intelligence)\s+(?:analysis|insights|review)/i,
+      /(?:analyze|analyse)\s+(?:my\s+)?(?:health|data|symptoms|diary|entries)/i,
+      /(?:ai|artificial intelligence)\s+(?:help|analysis|insights|suggestions)/i,
+      /(?:get|give|show)\s+(?:me\s+)?(?:ai|artificial intelligence)\s+(?:insights|analysis|suggestions)/i
+    ],
+    AI_SYMPTOM_ANALYSIS: [
+      // Symptom analysis patterns
+      /(?:analyze|analyse)\s+(?:my\s+)?(?:symptoms|pain|health issues)/i,
+      /(?:symptom|pain)\s+(?:analysis|insights|patterns|trends)/i,
+      /(?:look for|find)\s+(?:patterns|correlations)\s+(?:in)\s+(?:my\s+)?(?:symptoms|health)/i,
+      /(?:ai|artificial intelligence)\s+(?:symptom|pain)\s+(?:analysis|insights)/i
+    ],
+    AI_QUESTIONS: [
+      // Questions generation patterns
+      /(?:suggest|generate|create)\s+(?:questions|what to ask)\s+(?:for)\s+(?:my\s+)?(?:doctor|physician|appointment|visit)/i,
+      /(?:what\s+)?(?:questions|things)\s+(?:should|to)\s+(?:i\s+)?(?:ask|bring up)\s+(?:at|during|in)\s+(?:my\s+)?(?:appointment|visit)/i,
+      /(?:help|assist)\s+(?:me\s+)?(?:prepare|get ready)\s+(?:for)\s+(?:my\s+)?(?:appointment|visit)/i,
+      /(?:ai|artificial intelligence)\s+(?:questions|suggestions)\s+(?:for)\s+(?:doctor|physician)/i
+    ],
+    AI_SUMMARY: [
+      // Health summary patterns
+      /(?:health|medical)\s+(?:summary|overview|report)/i,
+      /(?:summarize|summarise)\s+(?:my\s+)?(?:health|medical)\s+(?:data|information|history)/i,
+      /(?:overall|general)\s+(?:health|medical)\s+(?:status|condition|overview)/i,
+      /(?:ai|artificial intelligence)\s+(?:health|medical)\s+(?:summary|overview)/i
+    ],
+    AI_RECOMMENDATIONS: [
+      // Recommendations patterns
+      /(?:health|wellness|lifestyle)\s+(?:recommendations|suggestions|advice|tips)/i,
+      /(?:recommend|suggest)\s+(?:ways|things|steps)\s+(?:to)\s+(?:improve|help|better)\s+(?:my\s+)?(?:health|wellness)/i,
+      /(?:what\s+)?(?:can|should)\s+(?:i\s+)?(?:do|change)\s+(?:to)\s+(?:improve|help|better)\s+(?:my\s+)?(?:health|wellness)/i,
+      /(?:ai|artificial intelligence)\s+(?:recommendations|suggestions|advice)/i
+    ],
     UNKNOWN: [] // No patterns for unknown
   };
 };
@@ -115,6 +150,11 @@ const INTENT_ROUTES: Record<ConciergeIntent, string> = {
   ADD_MOOD: '/patient/:patientId?mood=true',
   ADD_SLEEP: '/patient/:patientId?sleep=true',
   QUERY_DATA: '/patient/:patientId?query=true',
+  AI_ANALYSIS: '/patient/:patientId?ai=true',
+  AI_SYMPTOM_ANALYSIS: '/patient/:patientId?ai=symptom-analysis',
+  AI_QUESTIONS: '/patient/:patientId?ai=questions',
+  AI_SUMMARY: '/patient/:patientId?ai=summary',
+  AI_RECOMMENDATIONS: '/patient/:patientId?ai=recommendations',
   UNKNOWN: ''
 };
 
@@ -225,6 +265,30 @@ function extractSlots(input: string, intent: ConciergeIntent): Record<string, an
       if (durationMatch) {
         slots.duration = durationMatch[1];
       }
+      break;
+      
+    case 'AI_ANALYSIS':
+      // Extract analysis type if mentioned
+      const analysisTypeMatch = input.match(/(?:symptom|question|summary|recommendation|health|overview)/i);
+      if (analysisTypeMatch) {
+        slots.analysisType = analysisTypeMatch[0].toLowerCase();
+      }
+      break;
+      
+    case 'AI_SYMPTOM_ANALYSIS':
+      slots.analysisType = 'symptom-analysis';
+      break;
+      
+    case 'AI_QUESTIONS':
+      slots.analysisType = 'questions';
+      break;
+      
+    case 'AI_SUMMARY':
+      slots.analysisType = 'summary';
+      break;
+      
+    case 'AI_RECOMMENDATIONS':
+      slots.analysisType = 'recommendations';
       break;
   }
   
@@ -407,6 +471,9 @@ export function getSuggestedActions(): Array<{intent: ConciergeIntent, label: st
     { intent: 'ADD_APPOINTMENT', label: 'Add Appointment', description: 'Schedule a doctor visit' },
     { intent: 'ADD_NOTE', label: 'Add Note', description: 'Write a general note or diary entry' },
     { intent: 'ADD_MOOD', label: 'Add Mood', description: 'Track your mood and feelings' },
-    { intent: 'ADD_SLEEP', label: 'Add Sleep', description: 'Record sleep quality and duration' }
+    { intent: 'ADD_SLEEP', label: 'Add Sleep', description: 'Record sleep quality and duration' },
+    { intent: 'AI_ANALYSIS', label: 'AI Analysis', description: 'Get AI insights on your health data' },
+    { intent: 'AI_SYMPTOM_ANALYSIS', label: 'Symptom Analysis', description: 'Analyze symptoms and patterns' },
+    { intent: 'AI_QUESTIONS', label: 'Suggested Questions', description: 'Get questions for your next doctor visit' }
   ];
 }

@@ -838,11 +838,14 @@ export default function Settings() {
                     <CreditCard className="h-5 w-5 text-teal-600 mr-2" />
                     Free Plan Usage
                   </h4>
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center">
                         <FileText className="h-4 w-4 text-teal-600 mr-2" />
-                        <span className="text-gray-700">Add Diary Entry</span>
+                        <div>
+                          <span className="text-gray-700 font-medium">Add Diary Entry</span>
+                          <p className="text-xs text-gray-500 mt-1">Record your first health note</p>
+                        </div>
                       </div>
                       <div className="flex items-center">
                         {usageLoading ? (
@@ -850,11 +853,10 @@ export default function Settings() {
                         ) : diaryEntriesUsed > 0 ? (
                           <div className="flex items-center text-green-600">
                             <Check className="h-4 w-4 mr-1" />
-                            <span className="text-sm font-medium">Completed</span>
+                            <span className="text-sm font-medium line-through">Completed</span>
                           </div>
                         ) : (
                           <div className="flex items-center text-gray-500">
-                            <X className="h-4 w-4 mr-1" />
                             <span className="text-sm">Available</span>
                           </div>
                         )}
@@ -864,7 +866,10 @@ export default function Settings() {
                     <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center">
                         <AlertCircle className="h-4 w-4 text-purple-600 mr-2" />
-                        <span className="text-gray-700">AI Analysis</span>
+                        <div>
+                          <span className="text-gray-700 font-medium">AI Analysis</span>
+                          <p className="text-xs text-gray-500 mt-1">Get AI insights on your health data</p>
+                        </div>
                       </div>
                       <div className="flex items-center">
                         {usageLoading ? (
@@ -872,11 +877,10 @@ export default function Settings() {
                         ) : aiAnalysisUsed > 0 ? (
                           <div className="flex items-center text-green-600">
                             <Check className="h-4 w-4 mr-1" />
-                            <span className="text-sm font-medium">Completed</span>
+                            <span className="text-sm font-medium line-through">Completed</span>
                           </div>
                         ) : (
                           <div className="flex items-center text-gray-500">
-                            <X className="h-4 w-4 mr-1" />
                             <span className="text-sm">Available</span>
                           </div>
                         )}

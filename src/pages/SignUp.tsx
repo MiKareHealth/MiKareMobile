@@ -7,7 +7,7 @@ import { log, error as logError } from '../utils/logger';
 import RegionSelector from '../components/RegionSelector';
 import { Region, setUserRegion } from '../lib/regionDetection';
 import { SIGNIN_IMAGE, SIGNIN_VIDEO, MIKARE_LOGO } from '../config/branding';
-import { clearLockoutOnNavigation, clearLockout } from '../utils/securityUtils';
+import { clearLockoutOnNavigation, clearLockout, getLockoutState } from '../utils/securityUtils';
 
 export default function SignUp() {
   const navigate = useNavigate();
@@ -116,6 +116,35 @@ export default function SignUp() {
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
+  // Refresh lockout state when page becomes visible
+  useEffect(() => {
+    const refreshLockoutState = () => {
+      // Refresh the lockout state
+      const currentState = getLockoutState();
+      // Update any lockout-related UI if needed
+    };
+
+    // Refresh lockout state when page becomes visible (user navigates back)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        refreshLockoutState();
+      }
+    };
+
+    // Refresh lockout state when window gains focus (user switches back to tab)
+    const handleFocus = () => {
+      refreshLockoutState();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
     };
   }, []);
 

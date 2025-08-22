@@ -17,13 +17,13 @@ export async function queryGemini(prompt: string, context?: string, region?: str
   const getRegionInstructions = (region: string): string => {
     switch (region) {
       case 'AU':
-        return 'Please tailor your response to Australian English and use Australian medical terminology where appropriate. ';
+        return 'Use standard English but prefer Australian medical terminology where relevant (e.g., "GP" instead of "PCP", "chemist" instead of "pharmacy"). Maintain professional, clear language. ';
       case 'UK':
-        return 'Please tailor your response to British English and use UK medical terminology where appropriate. ';
+        return 'Use standard English but prefer British medical terminology where relevant (e.g., "GP" instead of "PCP", "chemist" instead of "pharmacy"). Maintain professional, clear language. ';
       case 'USA':
-        return 'Please tailor your response to American English and use US medical terminology where appropriate. ';
+        return 'Use standard English but prefer American medical terminology where relevant (e.g., "PCP" or "family doctor" instead of "GP", "pharmacy" instead of "chemist"). Maintain professional, clear language. ';
       default:
-        return 'Please tailor your response to American English and use US medical terminology where appropriate. ';
+        return 'Use standard English but prefer American medical terminology where relevant (e.g., "PCP" or "family doctor" instead of "GP", "pharmacy" instead of "chemist"). Maintain professional, clear language. ';
     }
   };
 

@@ -5,7 +5,7 @@ import { getTableSchemas } from '../lib/meekaDataOperations';
 import type { ChatMessage } from '../types/database';
 
 export function useMeekaAI() {
-  const callGeminiAPI = async (messages: any[], patientContext: any) => {
+  const callGeminiAPI = async (messages: any[], patientContext: any, freePlanContext?: any) => {
     const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
     if (!apiKey) {
       throw new Error('Google API key not configured');
@@ -16,13 +16,13 @@ export function useMeekaAI() {
     const getRegionInstructions = (region: string): string => {
       switch (region) {
         case 'AU':
-          return 'Please use Australian English and Australian medical terminology where appropriate. ';
+          return 'Use standard English but prefer Australian medical terminology where relevant (e.g., "GP" instead of "PCP", "chemist" instead of "pharmacy"). Maintain professional, clear language. ';
         case 'UK':
-          return 'Please use British English and UK medical terminology where appropriate. ';
+          return 'Use standard English but prefer British medical terminology where relevant (e.g., "GP" instead of "PCP", "chemist" instead of "pharmacy"). Maintain professional, clear language. ';
         case 'USA':
-          return 'Please use American English and US medical terminology where appropriate. ';
+          return 'Use standard English but prefer American medical terminology where relevant (e.g., "PCP" or "family doctor" instead of "GP", "pharmacy" instead of "chemist"). Maintain professional, clear language. ';
         default:
-          return 'Please use American English and US medical terminology where appropriate. ';
+          return 'Use standard English but prefer American medical terminology where relevant (e.g., "PCP" or "family doctor" instead of "GP", "pharmacy" instead of "chemist"). Maintain professional, clear language. ';
       }
     };
 
@@ -43,7 +43,33 @@ Current Patient Context:
     const tableSchemas = getTableSchemas();
     
     // Enhanced system prompt with database capabilities and region-specific language
-    const enhancedSystemPrompt = `${regionInstructions}You are Meeka, a warm and helpful AI health assistant for MiKare. You help users manage their health records and provide guidance.
+    // Build free plan context
+    const freePlanInstructions = freePlanContext ? `
+FREE PLAN CONTEXT:
+- User is on the FREE PLAN with limited access
+- Diary entries used: ${freePlanContext.diaryEntriesUsed}/1
+- AI analysis used: ${freePlanContext.aiAnalysisUsed}/1
+- Can add diary entry: ${freePlanContext.canAddDiaryEntry ? 'YES' : 'NO'}
+- Can use AI analysis: ${freePlanContext.canUseAI ? 'YES' : 'NO'}
+
+SPECIAL GUIDANCE FOR FREE PLAN USERS:
+- If they haven't added a diary entry yet, encourage them to try adding their first one
+- If they've added a diary entry but haven't used AI analysis, suggest they try AI analysis on their data
+- If they've used both features, gently suggest upgrading to continue using MiKare
+- Guide them through the onboarding flow: add diary entry → try AI analysis → upgrade
+- Be encouraging about the free trial experience
+
+AI ANALYSIS CAPABILITIES:
+You can trigger AI analysis for users by using the intent "AI_ANALYSIS" with these analysis types:
+- symptom-analysis: Analyze symptoms and diary entries for patterns and insights
+- questions: Generate suggested questions for their next medical visit
+- summary: Create a comprehensive health summary
+- recommendations: Provide general health recommendations based on their data
+
+When suggesting AI analysis, explain what insights they could get from their current health data.
+` : '';
+
+    const enhancedSystemPrompt = `${regionInstructions}${freePlanInstructions}You are Meeka, a warm and helpful AI health assistant for MiKare. You help users manage their health records and provide guidance.
 
 Key Guidelines:
 - Be warm, clear, and non-clinical in tone
@@ -54,6 +80,7 @@ Key Guidelines:
 
 Your capabilities:
 - Add records to the database for symptoms, medications, mood entries, diary entries, and patient documents
+- Execute AI analysis on user's health data (if they have free plan access or are on paid plan)
 - Answer questions about their health history and patterns
 - Provide insights about correlations between different health factors
 - Suggest questions for their next medical visit
@@ -80,6 +107,13 @@ DIARY_ENTRIES TABLE:
 PATIENT_DOCUMENTS TABLE:
 - Required: file_name (text), file_type (text), file_size (integer), file_url (text)
 - Optional: description (text)
+
+AI ANALYSIS CAPABILITIES:
+You can trigger AI analysis by responding with "AI_ANALYSIS:[type]" where type is:
+- symptom-analysis: For analyzing symptoms and health patterns
+- questions: For generating questions for medical visits
+- summary: For creating health summaries
+- recommendations: For providing health recommendations
 
 When a user wants to add data, ask for the required fields one by one in a conversational way. Use today's date as default for date fields unless specified otherwise.
 

@@ -22,9 +22,8 @@ export default function Layout({ children, title, loading }: LayoutProps) {
   const navigate = useNavigate();
   const { id } = useParams();
   const location = useLocation();
-  const { patients, loading: patientsLoading, refreshPatients } = usePatients();
+  const { patients, loading: patientsLoading } = usePatients();
   const [signoutInProgress, setSignoutInProgress] = useState(false);
-  const [sidebarReady, setSidebarReady] = useState(false);
   
   // Mobile and desktop state management
   const [isMobile, setIsMobile] = useState(false);
@@ -61,60 +60,6 @@ export default function Layout({ children, title, loading }: LayoutProps) {
       setIsMenuOpen(false);
     }
   }, [location.pathname, isMobile]);
-
-  useEffect(() => {
-    let timeout: NodeJS.Timeout;
-    let interval: NodeJS.Timeout;
-    
-    // Only log in development mode
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[Layout] Sidebar loading state:', { patientsLoading, patientsLength: patients.length, sidebarReady });
-    }
-    
-    // If we already have patients, show sidebar immediately
-    if (patients.length > 0) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[Layout] Patients already loaded, showing sidebar immediately');
-      }
-      setSidebarReady(true);
-      return;
-    }
-    
-    // Show skeleton if still loading OR if we have no patients yet but loading is complete
-    if (patientsLoading || (!patientsLoading && patients.length === 0 && !sidebarReady)) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[Layout] Showing skeleton loading');
-      }
-      setSidebarReady(false);
-      const start = Date.now();
-      interval = setInterval(() => {
-        // Stop showing skeleton if we have patients OR if loading is complete and we've waited long enough
-        if (patients.length > 0 || (!patientsLoading && Date.now() - start > 800)) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('[Layout] Stopping skeleton, patients:', patients.length, 'loading:', patientsLoading);
-          }
-          setSidebarReady(true);
-          clearInterval(interval);
-        }
-      }, 100);
-      timeout = setTimeout(() => {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[Layout] Skeleton timeout reached');
-        }
-        setSidebarReady(true);
-        clearInterval(interval);
-      }, 800); // Increased timeout to 800ms to give more time for patient loading
-    } else {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[Layout] Setting sidebar ready immediately');
-      }
-      setSidebarReady(true);
-    }
-    return () => {
-      clearInterval(interval);
-      clearTimeout(timeout);
-    };
-  }, [patientsLoading, patients.length]); // Remove sidebarReady dependency to prevent infinite loop
 
   const handleSignOut = async () => {
     if (signoutInProgress) return;
@@ -285,8 +230,8 @@ export default function Layout({ children, title, loading }: LayoutProps) {
                   {(!isMobile && isDesktopCollapsed) ? 'People' : 'My people'}
                 </h3>
                 <div className="mt-2 space-y-1">
-                  {!sidebarReady ? (
-                    // Show skeleton loading while waiting for sidebarReady
+                  {patientsLoading ? (
+                    // Show skeleton loading while patients are being fetched
                     Array.from({ length: 3 }, (_, index) => (
                       <div key={index} className="flex items-center justify-center">
                         <div className="w-8 h-8 rounded-full overflow-hidden bg-white/80 shadow-inner">

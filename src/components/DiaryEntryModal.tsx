@@ -76,7 +76,7 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
   const { canAddDiaryEntry } = useFreePlanUsage();
   
   // Determine if we're in view-only mode (either by prop, subscription plan, or free plan usage)
-  const isViewOnly = viewOnly || isFreePlan || !canAddDiaryEntry;
+  const isViewOnly = viewOnly || (isFreePlan && !canAddDiaryEntry);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -777,15 +777,12 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
           </button>
         </div>
 
-        {isViewOnly && (isFreePlan || !canAddDiaryEntry) && (
+        {isViewOnly && isFreePlan && !canAddDiaryEntry && (
           <div className="bg-amber-50 p-3 mx-4 mt-4 rounded-lg border border-amber-200">
             <div className="flex items-center">
               <Lock className="h-4 w-4 text-amber-600 mr-2" />
               <p className="text-sm text-amber-800">
-                {!canAddDiaryEntry 
-                  ? "You've used your free diary entry. Upgrade to continue adding entries."
-                  : "Adding diary entries is available on paid plans."
-                }
+                You've used your free diary entry. Upgrade to continue adding entries.
                 <a href="/settings" className="ml-1 font-medium underline">Upgrade your plan</a>
               </p>
             </div>

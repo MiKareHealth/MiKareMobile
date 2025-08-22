@@ -157,6 +157,11 @@ export type ConciergeIntent =
   | 'ADD_MOOD' 
   | 'ADD_SLEEP'
   | 'QUERY_DATA'
+  | 'AI_ANALYSIS'
+  | 'AI_SYMPTOM_ANALYSIS'
+  | 'AI_QUESTIONS'
+  | 'AI_SUMMARY'
+  | 'AI_RECOMMENDATIONS'
   | 'UNKNOWN';
 
 export type ConciergeResult = 'opened' | 'failed' | 'cancelled';
