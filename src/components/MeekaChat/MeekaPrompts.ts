@@ -183,10 +183,14 @@ export function buildContextPrompt(patientData: any, recentEntries: any[]): stri
 
   return `Patient Context:
 - Name: ${patientData?.full_name || 'Unknown'}
+- Date of Birth: ${patientData?.dob || 'Unknown'}
+- Gender: ${patientData?.gender || 'Unknown'}
+- Relationship: ${patientData?.relationship || 'Unknown'}
+- Background Information: ${patientData?.notes || 'None provided'}
 - Recent symptoms: ${formatList(recentSymptoms, 3)}
 - Recent medications: ${formatList(recentMedications, 3)}
 - Recent appointments: ${formatList(recentAppointments, 3)}
 - Recent mood entries: ${formatList(recentMoodEntries, 3)}
 
-Use this context to provide personalized responses and insights.`;
+Use this context to provide personalized responses and insights. Consider the patient's background information, family history, allergies, cultural background, and other relevant details when available.`;
 }

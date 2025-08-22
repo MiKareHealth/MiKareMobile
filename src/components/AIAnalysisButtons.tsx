@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Brain, Loader } from 'lucide-react';
 import { getSupabaseClient } from '../lib/supabaseClient';
 import { queryGemini } from '../lib/gemini';
+import { getCurrentRegion } from '../lib/regionDetection';
 import type { DiaryEntry, Symptom } from '../types/database';
 import { error as logError } from '../utils/logger';
 
@@ -9,6 +10,7 @@ interface AIAnalysisButtonsProps {
   patientId: string;
   diaryEntries: DiaryEntry[];
   symptoms: Symptom[];
+  patient?: { full_name: string; notes: string | null; dob: string; gender: string; relationship: string } | null;
   onSuccess: () => void;
   autoCreate?: boolean; // Added to control behavior
 }
@@ -17,6 +19,7 @@ export default function AIAnalysisButtons({
   patientId, 
   diaryEntries, 
   symptoms, 
+  patient,
   onSuccess,
   autoCreate = true // Default to true for backward compatibility
 }: AIAnalysisButtonsProps) {
@@ -34,6 +37,13 @@ export default function AIAnalysisButtons({
       const supabase = await getSupabaseClient();
       
       const context = JSON.stringify({
+        patient: patient ? {
+          name: patient.full_name,
+          dateOfBirth: patient.dob,
+          gender: patient.gender,
+          relationship: patient.relationship,
+          notes: patient.notes
+        } : null,
         diaryEntries: diaryEntries.map(e => ({
           type: e.entry_type,
           title: e.title,
@@ -56,24 +66,25 @@ export default function AIAnalysisButtons({
       switch (type) {
         case 'symptom-analysis':
           title = 'Symptom Insights';
-          prompt = 'Analyze the symptoms and diary entries. Look for patterns, correlations between symptoms, and potential triggers. Focus on severity changes and duration patterns.';
+          prompt = 'Analyze the symptoms and diary entries. Consider the patient\'s background information, family history, allergies, and other relevant details when available. Look for patterns, correlations between symptoms, and potential triggers. Focus on severity changes and duration patterns.';
           break;
         case 'questions':
           title = 'Suggested Questions for Next Visit';
-          prompt = 'Based on the symptoms and diary entries, suggest important questions to ask during the next medical visit. Prioritize questions based on severity and recency of symptoms.';
+          prompt = 'Based on the symptoms, diary entries, and patient information, suggest important questions to ask during the next medical visit. Consider the patient\'s background, family history, allergies, and cultural factors when formulating questions. Prioritize questions based on severity and recency of symptoms.';
           break;
         case 'terminology':
           title = 'Medical Terminology Explanation';
-          prompt = 'Identify and explain any medical terminology found in the diary entries and symptoms. Provide clear, patient-friendly explanations.';
+          prompt = 'Identify and explain any medical terminology found in the diary entries and symptoms. Consider the patient\'s background and level of health literacy when providing explanations. Provide clear, patient-friendly explanations.';
           break;
         case 'trends':
           title = 'Health Trend Analysis';
-          prompt = 'Analyze the overall health trends based on symptoms and diary entries. Identify any improvements or deteriorations, and highlight key patterns in health status.';
+          prompt = 'Analyze the overall health trends based on symptoms, diary entries, and patient information. Consider the patient\'s background, family history, and other relevant factors when identifying patterns. Identify any improvements or deteriorations, and highlight key patterns in health status.';
           break;
       }
 
       // Get AI response
-      const aiResponse = await queryGemini(prompt, context);
+      const currentRegion = getCurrentRegion();
+      const aiResponse = await queryGemini(prompt, context, currentRegion);
       
       // Store the analysis result in state for viewing
       setAnalysisResult({

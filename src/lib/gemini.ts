@@ -8,10 +8,28 @@ interface GeminiResponse {
   error?: string;
 }
 
-export async function queryGemini(prompt: string, context?: string): Promise<string> {
-  const region = getCurrentRegion() || 'USA';
-  const regionConfig = supabaseRegions[region];
+export async function queryGemini(prompt: string, context?: string, region?: string): Promise<string> {
+  const currentRegion = region || getCurrentRegion() || 'USA';
+  const regionConfig = supabaseRegions[currentRegion];
   const apiUrl = `${regionConfig.url}/functions/v1/gemini`;
+  
+  // Create region-specific language instructions
+  const getRegionInstructions = (region: string): string => {
+    switch (region) {
+      case 'AU':
+        return 'Please tailor your response to Australian English and use Australian medical terminology where appropriate. ';
+      case 'UK':
+        return 'Please tailor your response to British English and use UK medical terminology where appropriate. ';
+      case 'USA':
+        return 'Please tailor your response to American English and use US medical terminology where appropriate. ';
+      default:
+        return 'Please tailor your response to American English and use US medical terminology where appropriate. ';
+    }
+  };
+
+  // Prepend region instructions to the prompt
+  const regionInstructions = getRegionInstructions(currentRegion);
+  const enhancedPrompt = regionInstructions + prompt;
   
   try {
     const supabase = await getSupabaseClient();
@@ -21,7 +39,7 @@ export async function queryGemini(prompt: string, context?: string): Promise<str
       throw new Error('No valid authentication session found');
     }
 
-    log('Querying Gemini API...');
+    log('Querying Gemini API with region:', currentRegion);
     
     // Basic rate limiting - if too many AI requests are made in quick succession
     const now = Date.now();
@@ -37,7 +55,7 @@ export async function queryGemini(prompt: string, context?: string): Promise<str
         'Authorization': `Bearer ${session.access_token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ prompt, context }),
+      body: JSON.stringify({ prompt: enhancedPrompt, context }),
     });
 
     if (!response.ok) {
@@ -66,8 +84,9 @@ export async function queryGemini(prompt: string, context?: string): Promise<str
   } catch (error: any) {
     logError('Detailed Gemini query error:', {
       error: error.message,
-      prompt,
+      prompt: enhancedPrompt,
       contextLength: context?.length,
+      region: currentRegion,
     });
     throw new Error(`Failed to query Gemini AI: ${error.message}`);
   }

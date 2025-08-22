@@ -180,6 +180,8 @@ export default function PatientDetails() {
           onRefresh={refresh}
           error={error}
           loading={loading}
+          showPatientInfo={showPatientInfo}
+          setShowPatientInfo={setShowPatientInfo}
         />
       </div>
 

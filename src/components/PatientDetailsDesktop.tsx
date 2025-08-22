@@ -143,7 +143,52 @@ export default function PatientDetailsDesktop({
   const sortedSymptoms = [...symptoms].sort((a, b) => {
     const dateA = new Date(a.start_date).getTime();
     const dateB = new Date(b.start_date).getTime();
+    
+    // First sort by start_date
+    if (dateA !== dateB) {
+      return sortAscending ? dateA - dateB : dateB - dateA;
+    }
+    
+    // If dates are equal, sort by created_at timestamp
+    const createdA = new Date(a.created_at).getTime();
+    const createdB = new Date(b.created_at).getTime();
+    return sortAscending ? createdA - createdB : createdB - createdA;
+  });
+
+  const sortedMedications = [...medications].sort((a, b) => {
+    const dateA = new Date(a.start_date).getTime();
+    const dateB = new Date(b.start_date).getTime();
+    
+    // First sort by start_date
+    if (dateA !== dateB) {
+      return sortAscending ? dateA - dateB : dateB - dateA;
+    }
+    
+    // If dates are equal, sort by created_at timestamp
+    const createdA = new Date(a.created_at).getTime();
+    const createdB = new Date(b.created_at).getTime();
+    return sortAscending ? createdA - createdB : createdB - createdA;
+  });
+
+  const sortedDocuments = [...documents].sort((a, b) => {
+    const dateA = new Date(a.uploaded_at).getTime();
+    const dateB = new Date(b.uploaded_at).getTime();
     return sortAscending ? dateA - dateB : dateB - dateA;
+  });
+
+  const sortedNotes = [...diaryEntries.filter(e => e.entry_type === 'Note')].sort((a, b) => {
+    const dateA = new Date(a.date).getTime();
+    const dateB = new Date(b.date).getTime();
+    
+    // First sort by date
+    if (dateA !== dateB) {
+      return sortAscending ? dateA - dateB : dateB - dateA;
+    }
+    
+    // If dates are equal, sort by created_at timestamp
+    const createdA = new Date(a.created_at).getTime();
+    const createdB = new Date(b.created_at).getTime();
+    return sortAscending ? createdA - createdB : createdB - createdA;
   });
 
   const getIcon = (type: string) => {
@@ -561,7 +606,7 @@ export default function PatientDetailsDesktop({
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {documents.map((doc) => (
+              {sortedDocuments.map((doc) => (
                 <div
                   key={doc.id}
                   onClick={() => onEditDocument(doc)}
@@ -579,7 +624,7 @@ export default function PatientDetailsDesktop({
                 </div>
               ))}
 
-              {documents.length === 0 && (
+              {sortedDocuments.length === 0 && (
                 <div className="col-span-full text-center py-16">
                   <div className="bg-gradient-to-b from-background-subtle to-white rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
                     <FileText className="h-10 w-10 text-text-tertiary" />
@@ -603,7 +648,6 @@ export default function PatientDetailsDesktop({
         );
 
       case 'notes':
-        const noteEntries = diaryEntries.filter(entry => entry.entry_type === 'Note');
         return (
           <div className="space-y-4">
             {/* Filtering Controls */}
@@ -695,9 +739,9 @@ export default function PatientDetailsDesktop({
               </SubscriptionFeatureBlock>
             </div>
             
-            {noteEntries.length > 0 ? (
+            {sortedNotes.length > 0 ? (
               <div className="space-y-4">
-                {noteEntries.map((note) => (
+                {sortedNotes.map((note) => (
                   <div
                     key={note.id}
                     onClick={() => onEditNote(note)}
@@ -740,7 +784,7 @@ export default function PatientDetailsDesktop({
           <SubscriptionFeatureBlock isBlocked={isFreePlan} featureName="Medication tracking">
             <MedicationList
               patientId={patient?.id || ''}
-              medications={medications}
+              medications={sortedMedications}
               onUpdate={onRefresh}
               isFreePlan={isFreePlan}
             />
@@ -912,12 +956,29 @@ export default function PatientDetailsDesktop({
                       <label className="block text-sm font-medium text-gray-700">Address</label>
                       <p className="mt-1">{patient.address}</p>
                     </div>
-                    {patient.notes && (
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700">Notes</label>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700">Notes</label>
+                      {patient.notes ? (
                         <p className="mt-1 whitespace-pre-wrap">{patient.notes}</p>
-                      </div>
-                    )}
+                      ) : (
+                        <div className="mt-1 p-4 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg">
+                          <div className="text-center">
+                            <BookOpen className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                            <p className="text-sm text-gray-600 font-medium mb-1">No patient information added yet</p>
+                            <p className="text-xs text-gray-500">
+                              Consider adding family history, allergies, cultural background, religious preferences, nationality, or other relevant details that healthcare providers should know.
+                            </p>
+                            <button
+                              onClick={() => setShowEditPatientModal(true)}
+                              className="mt-3 inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white text-xs font-medium rounded-md shadow-sm transition-all duration-200"
+                            >
+                              <Edit className="h-3 w-3 mr-1" />
+                              Add Information
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -942,6 +1003,7 @@ export default function PatientDetailsDesktop({
                   patientId={patient?.id || ''}
                   diaryEntries={diaryEntries}
                   symptoms={symptoms}
+                  patient={patient}
                   onSuccess={onRefresh}
                   autoCreate={!isFreePlan}
                 />

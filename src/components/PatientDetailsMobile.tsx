@@ -77,6 +77,8 @@ interface PatientDetailsMobileProps {
   onRefresh: () => void;
   error: string | null;
   loading?: boolean;
+  showPatientInfo?: boolean;
+  setShowPatientInfo?: (show: boolean) => void;
 }
 
 export default function PatientDetailsMobile({
@@ -109,6 +111,8 @@ export default function PatientDetailsMobile({
   onRefresh,
   error,
   loading = false,
+  showPatientInfo = false,
+  setShowPatientInfo,
 }: PatientDetailsMobileProps) {
   const navigate = useNavigate();
   const { formatDate } = useUserPreferences();
@@ -162,7 +166,52 @@ export default function PatientDetailsMobile({
   const sortedSymptoms = [...symptoms].sort((a, b) => {
     const dateA = new Date(a.start_date).getTime();
     const dateB = new Date(b.start_date).getTime();
+    
+    // First sort by start_date
+    if (dateA !== dateB) {
+      return sortAscending ? dateA - dateB : dateB - dateA;
+    }
+    
+    // If dates are equal, sort by created_at timestamp
+    const createdA = new Date(a.created_at).getTime();
+    const createdB = new Date(b.created_at).getTime();
+    return sortAscending ? createdA - createdB : createdB - createdA;
+  });
+
+  const sortedMedications = [...medications].sort((a, b) => {
+    const dateA = new Date(a.start_date).getTime();
+    const dateB = new Date(b.start_date).getTime();
+    
+    // First sort by start_date
+    if (dateA !== dateB) {
+      return sortAscending ? dateA - dateB : dateB - dateA;
+    }
+    
+    // If dates are equal, sort by created_at timestamp
+    const createdA = new Date(a.created_at).getTime();
+    const createdB = new Date(b.created_at).getTime();
+    return sortAscending ? createdA - createdB : createdB - createdA;
+  });
+
+  const sortedDocuments = [...documents].sort((a, b) => {
+    const dateA = new Date(a.uploaded_at).getTime();
+    const dateB = new Date(b.uploaded_at).getTime();
     return sortAscending ? dateA - dateB : dateB - dateA;
+  });
+
+  const sortedNotes = [...diaryEntries.filter(e => e.entry_type === 'Note')].sort((a, b) => {
+    const dateA = new Date(a.date).getTime();
+    const dateB = new Date(b.date).getTime();
+    
+    // First sort by date
+    if (dateA !== dateB) {
+      return sortAscending ? dateA - dateB : dateB - dateA;
+    }
+    
+    // If dates are equal, sort by created_at timestamp
+    const createdA = new Date(a.created_at).getTime();
+    const createdB = new Date(b.created_at).getTime();
+    return sortAscending ? createdA - createdB : createdB - createdA;
   });
 
   const getIcon = (type: string) => {
@@ -576,7 +625,7 @@ export default function PatientDetailsMobile({
                   </div>
                 ))
               ) : (
-                documents.map((doc) => (
+                sortedDocuments.map((doc) => (
                   <div
                     key={doc.id}
                     onClick={() => onEditDocument(doc)}
@@ -602,7 +651,7 @@ export default function PatientDetailsMobile({
                   <Skeleton className="h-4 w-1/3 mx-auto" />
                 </div>
               ) : (
-                documents.length === 0 && (
+                sortedDocuments.length === 0 && (
                   <div className="text-center py-12">
                     <div className="bg-gradient-to-b from-gray-50 to-white rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
                       <FileText className="h-8 w-8 text-gray-400" />
@@ -627,7 +676,6 @@ export default function PatientDetailsMobile({
         );
 
       case 'notes':
-        const noteEntries = diaryEntries.filter(entry => entry.entry_type === 'Note');
         return (
           <div className="space-y-4">
             {/* Filtering Controls */}
@@ -721,9 +769,9 @@ export default function PatientDetailsMobile({
                 <Skeleton className="h-4 w-1/3 mx-auto" />
               </div>
             ) : (
-              noteEntries.length > 0 ? (
+              sortedNotes.length > 0 ? (
                 <div className="space-y-3">
-                  {noteEntries.map((note) => (
+                  {sortedNotes.map((note) => (
                     <div
                       key={note.id}
                       onClick={() => onEditNote(note)}
@@ -773,7 +821,7 @@ export default function PatientDetailsMobile({
           <SubscriptionFeatureBlock isBlocked={isFreePlan} featureName="Medication tracking">
             <MedicationList
               patientId={patient?.id || ''}
-              medications={medications}
+              medications={sortedMedications}
               onUpdate={onRefresh}
               isFreePlan={isFreePlan}
             />
@@ -1052,6 +1100,65 @@ export default function PatientDetailsMobile({
           )}
         </div>
 
+        {/* Patient Information Section */}
+        {setShowPatientInfo && (
+          <div className="bg-white border-b border-gray-200">
+            <button
+              onClick={() => setShowPatientInfo(!showPatientInfo)}
+              className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+            >
+              <span className="text-sm font-medium text-gray-900">Personal information</span>
+              {showPatientInfo ? (
+                <ChevronUp className="h-5 w-5 text-gray-500" />
+              ) : (
+                <ChevronDown className="h-5 w-5 text-gray-500" />
+              )}
+            </button>
+            {showPatientInfo && patient && (
+              <div className="px-6 pb-6">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Date of Birth</label>
+                    <p className="mt-1 text-sm">{formatDate(patient.dob)}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Birth sex</label>
+                    <p className="mt-1 text-sm">{patient.gender}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Phone Number</label>
+                    <p className="mt-1 text-sm">{patient.phone_number}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Country</label>
+                    <p className="mt-1 text-sm">{patient.country}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Address</label>
+                    <p className="mt-1 text-sm">{patient.address}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Notes</label>
+                    {patient.notes ? (
+                      <p className="mt-1 text-sm whitespace-pre-wrap">{patient.notes}</p>
+                    ) : (
+                      <div className="mt-1 p-3 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg">
+                        <div className="text-center">
+                          <BookOpen className="h-6 w-6 text-gray-400 mx-auto mb-2" />
+                          <p className="text-xs text-gray-600 font-medium mb-1">No patient information added yet</p>
+                          <p className="text-xs text-gray-500">
+                            Consider adding family history, allergies, cultural background, religious preferences, nationality, or other relevant details.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Row 4: Log Today's Mood Button */}
         <div className="p-4 bg-white border-b border-gray-200">
           <SubscriptionFeatureBlock featureName="Mood tracking">
@@ -1090,6 +1197,7 @@ export default function PatientDetailsMobile({
               patientId={patient?.id || ''}
               diaryEntries={diaryEntries}
               symptoms={symptoms}
+              patient={patient}
               onSuccess={onRefresh}
               autoCreate={!isFreePlan}
             />

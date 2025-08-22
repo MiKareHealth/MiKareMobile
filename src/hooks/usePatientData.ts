@@ -74,7 +74,8 @@ export function usePatientData(patientId: string) {
           .from('symptoms')
           .select('*')
           .eq('profile_id', patientId)
-          .order('start_date', { ascending: false });
+          .order('start_date', { ascending: false })
+          .order('created_at', { ascending: false });
 
         if (symptomsData) {
           setSymptoms(symptomsData);
@@ -97,7 +98,8 @@ export function usePatientData(patientId: string) {
           .from('medications')
           .select('*')
           .eq('profile_id', patientId)
-          .order('start_date', { ascending: false });
+          .order('start_date', { ascending: false })
+          .order('created_at', { ascending: false });
 
         if (medicationsData) {
           setMedications(medicationsData || []);
@@ -150,7 +152,8 @@ export function usePatientData(patientId: string) {
             .from('symptoms')
             .select('*')
             .eq('profile_id', patientId)
-            .order('start_date', { ascending: false });
+            .order('start_date', { ascending: false })
+            .order('created_at', { ascending: false });
           if (symptomsData) {
             setSymptoms(symptomsData);
           }
@@ -161,7 +164,8 @@ export function usePatientData(patientId: string) {
             .from('medications')
             .select('*')
             .eq('profile_id', patientId)
-            .order('start_date', { ascending: false });
+            .order('start_date', { ascending: false })
+            .order('created_at', { ascending: false });
           if (medicationsData) {
             setMedications(medicationsData);
           }

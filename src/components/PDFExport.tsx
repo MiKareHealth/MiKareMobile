@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Document,
   Page,
@@ -8,7 +8,10 @@ import {
   PDFDownloadLink,
   Image,
 } from '@react-pdf/renderer';
-import { Loader } from 'lucide-react';
+import { Download, Loader, FileText, Calendar, User, Activity, Pill, Heart, Brain, AlertCircle, CheckCircle, Clock, MapPin, Phone, Mail, Globe, Star, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { getSupabaseClient } from '../lib/supabaseClient';
+import { queryGemini } from '../lib/gemini';
+import { getCurrentRegion } from '../lib/regionDetection';
 import type {
   Patient,
   DiaryEntry,
@@ -16,7 +19,7 @@ import type {
   Medication,
   MoodEntry,
 } from '../types/database';
-import { queryGemini } from '../lib/gemini';
+import { formatDate } from '../utils/timeUtils';
 import { PDFEXPORT_LOGO } from '../config/branding';
 
 interface PDFExportProps {
@@ -530,18 +533,19 @@ export const GenerateReport = ({
           });
           
           // Generate diary summary
+          const currentRegion = getCurrentRegion();
           const diaryPrompt = "Based on this patient's diary entries and mood tracking data, provide a concise 2-3 sentence summary of their recent health events, medical history, and emotional well-being. Include insights about their mood patterns, sleep quality, and overall health journey. Focus on the most important appointments, diagnoses, treatments, and emotional trends.";
-          const diaryResult = await queryGemini(diaryPrompt, context);
+          const diaryResult = await queryGemini(diaryPrompt, context, currentRegion);
           setDiarySummary(diaryResult);
           
           // Generate symptoms summary
           const symptomsPrompt = "Based on this patient's symptoms, provide a concise 2-3 sentence summary of their current health status and ongoing issues. Focus on severity and duration of symptoms.";
-          const symptomsResult = await queryGemini(symptomsPrompt, context);
+          const symptomsResult = await queryGemini(symptomsPrompt, context, currentRegion);
           setSymptomsSummary(symptomsResult);
           
           // Generate questions for next visit
           const questionsPrompt = "Based on this patient's medical history, generate the 5 most important questions to ask during the next medical visit. Format each question on a new line with a number. Prioritize the most critical health concerns. Questions should be clear, specific, and actionable. For example: 1. Have you noticed any changes in symptom X since starting medication Y?";
-          const questionsResult = await queryGemini(questionsPrompt, context);
+          const questionsResult = await queryGemini(questionsPrompt, context, currentRegion);
           
           // Parse the returned content (should be a numbered list)
           const questionLines = questionsResult.split('\n').filter(line => 

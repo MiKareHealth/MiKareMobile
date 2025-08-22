@@ -359,8 +359,9 @@ export default function EditPatientModal({
                 <div className="mt-1">
                   <textarea
                     name="notes"
-                    rows={3}
+                    rows={4}
                     defaultValue={patient.notes || ''}
+                    placeholder="Add important patient information such as family history, allergies, cultural background, religious preferences, nationality, or any other relevant details that healthcare providers should know..."
                     className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 py-3 px-4 text-base"
                   />
                 </div>
