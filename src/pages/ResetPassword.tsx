@@ -5,6 +5,7 @@ import { getSupabaseClient } from '../lib/supabaseClient';
 import { log, error as logError } from '../utils/logger';
 import { MIKARE_LOGO } from '../config/branding';
 import { logPasswordChangeEvent } from '../utils/auditUtils';
+import { addSecurityHeaders, generateSecureToken, validateCSRFToken } from '../utils/securityUtils';
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -18,13 +19,21 @@ export default function ResetPassword() {
   const [success, setSuccess] = useState(false);
   const [tokenValid, setTokenValid] = useState<boolean | null>(null);
   const [email, setEmail] = useState<string | null>(null);
+  const [csrfToken, setCsrfToken] = useState<string>('');
   
   const passwordInputRef = useRef<HTMLInputElement>(null);
   const errorBannerRef = useRef<HTMLDivElement>(null);
 
-  // Get token and email from URL params
+  // Get token from URL params
   const token = searchParams.get('token');
-  const emailParam = searchParams.get('email');
+
+  useEffect(() => {
+    // Add security headers
+    addSecurityHeaders();
+    
+    // Generate secure CSRF token on component mount
+    setCsrfToken(generateSecureToken());
+  }, []);
 
   useEffect(() => {
     // Focus error banner when it appears for screen readers
@@ -47,24 +56,20 @@ export default function ResetPassword() {
     try {
       const client = await getSupabaseClient();
       
-      // Verify the token is valid by attempting to get the user
-      const { data: { user }, error } = await client.auth.getUser();
+      // Properly validate the reset token using verifyOtp
+      const { data, error } = await client.auth.verifyOtp({
+        token_hash: token!,
+        type: 'recovery'
+      });
       
-      if (error || !user) {
+      if (error || !data.user) {
         setTokenValid(false);
         setError('Reset link invalid or expired. Request a new link.');
         return;
       }
 
-      // Verify email matches if provided in URL
-      if (emailParam && user.email && user.email !== emailParam) {
-        setTokenValid(false);
-        setError('Email mismatch. Please use the correct reset link.');
-        return;
-      }
-
       setTokenValid(true);
-      setEmail(user.email || null);
+      setEmail(data.user.email || null);
       
       // Focus password input for better UX
       if (passwordInputRef.current) {
@@ -85,6 +90,15 @@ export default function ResetPassword() {
       return;
     }
 
+    // Validate CSRF token
+    const formData = new FormData(e.target as HTMLFormElement);
+    const submittedToken = formData.get('csrf_token') as string;
+    
+    if (!validateCSRFToken(submittedToken, csrfToken)) {
+      setError('Security validation failed. Please refresh the page and try again.');
+      return;
+    }
+
     // Validate password requirements
     if (password.length < 8) {
       setError('Password must be at least 8 characters long.');
@@ -102,7 +116,7 @@ export default function ResetPassword() {
     try {
       const client = await getSupabaseClient();
       
-      // Update the user's password using the token
+      // Update the user's password using the reset token
       const { error } = await client.auth.updateUser({
         password: password
       });
@@ -122,6 +136,14 @@ export default function ResetPassword() {
         logPasswordChangeEvent(user.id, client).catch((err) => {
           logError('Failed to log password change audit event:', err);
         });
+      }
+
+      // Invalidate all existing sessions for security
+      try {
+        await client.auth.signOut();
+        log('All sessions invalidated after password change');
+      } catch (err) {
+        logError('Failed to invalidate sessions after password change:', err);
       }
 
       setSuccess(true);
@@ -261,6 +283,9 @@ export default function ResetPassword() {
         </div>
 
         <form className="space-y-6" onSubmit={handleSubmit}>
+          {/* CSRF Protection */}
+          <input type="hidden" name="csrf_token" value={csrfToken} />
+          
           {error && (
             <div
               ref={errorBannerRef}

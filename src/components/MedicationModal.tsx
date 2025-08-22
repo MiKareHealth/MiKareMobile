@@ -32,6 +32,13 @@ export default function MedicationModal({ isOpen, onClose, patientId, medication
   // Determine if we're in view-only mode (either by prop or subscription plan)
   const isViewOnly = viewOnly || isFreePlan;
 
+  // Auto-update status when end date changes
+  useEffect(() => {
+    if (endDate && endDate.trim() !== '') {
+      setStatus('Inactive');
+    }
+  }, [endDate]);
+
   useEffect(() => {
     if (isOpen) {
       setMedicationName(medication?.medication_name || '');
@@ -59,6 +66,9 @@ export default function MedicationModal({ isOpen, onClose, patientId, medication
     try {
       const supabase = await getSupabaseClient();
       
+      // Determine final status - if end date is set, status should be Inactive
+      const finalStatus: MedicationStatus = endDate && endDate.trim() !== '' ? 'Inactive' : status;
+      
       if (medication) {
         // Update existing medication
         const { error: updateError } = await supabase
@@ -66,7 +76,7 @@ export default function MedicationModal({ isOpen, onClose, patientId, medication
           .update({
             medication_name: medicationName.trim(),
             dosage: dosage.trim(),
-            status: status,
+            status: finalStatus,
             start_date: startDate,
             end_date: endDate || null,
             prescribed_by: prescribedBy.trim() || null,
@@ -83,7 +93,7 @@ export default function MedicationModal({ isOpen, onClose, patientId, medication
             profile_id: patientId,
             medication_name: medicationName.trim(),
             dosage: dosage.trim(),
-            status: status,
+            status: finalStatus,
             start_date: startDate,
             end_date: endDate || null,
             prescribed_by: prescribedBy.trim() || null,

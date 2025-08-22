@@ -1006,6 +1006,7 @@ export default function PatientDetailsDesktop({
                   patient={patient}
                   onSuccess={onRefresh}
                   autoCreate={!isFreePlan}
+                  onOpenDiaryEntry={onEditDiaryEntry}
                 />
               </SubscriptionFeatureBlock>
             )}

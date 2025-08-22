@@ -594,10 +594,59 @@ export const GenerateReport = ({
 
   if (loadingQuestions) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-center">
-          <Loader className="h-8 w-8 animate-spin mx-auto mb-4 text-teal-500" />
-          <p className="text-gray-600">Analyzing data to generate questions...</p>
+      <div className="p-6 bg-white">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">
+          {type === 'summary' ? 'Summary Report' : 'Detailed Report'}
+        </h3>
+        
+        <div className="mb-6">
+          <p className="text-gray-600 mb-4">Analyzing data to generate insights...</p>
+          
+          {type === 'summary' && (
+            <div className="space-y-4">
+              {/* Active Medications - Show immediately */}
+              {medications && medications.filter(m => m.status === 'Active').length > 0 && (
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <h4 className="font-medium text-green-900 mb-2">Active Medications:</h4>
+                  <div className="space-y-2">
+                    {medications
+                      .filter(m => m.status === 'Active')
+                      .map((med, index) => (
+                        <div key={index} className="text-green-800 text-sm">
+                          <span className="font-medium">{med.medication_name}</span>
+                          {med.dosage && <span className="ml-2">- {med.dosage}</span>}
+                          {med.prescribed_by && <span className="ml-2">(Prescribed by: {med.prescribed_by})</span>}
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Loading indicator for AI content */}
+              <div className="flex items-center justify-center p-6 bg-gray-50 rounded-lg">
+                <div className="text-center">
+                  <Loader className="h-6 w-6 animate-spin mx-auto mb-3 text-teal-500" />
+                  <p className="text-gray-600 text-sm">Generating AI insights...</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        <div className="flex justify-between">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          
+          <button
+            disabled
+            className="px-4 py-2 bg-gray-300 text-gray-500 rounded-md cursor-not-allowed"
+          >
+            Download PDF
+          </button>
         </div>
       </div>
     );
@@ -605,10 +654,59 @@ export const GenerateReport = ({
 
   if (!ready) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-center">
-          <Loader className="h-8 w-8 animate-spin mx-auto mb-4 text-teal-500" />
-          <p className="text-gray-600">Preparing report...</p>
+      <div className="p-6 bg-white">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">
+          {type === 'summary' ? 'Summary Report' : 'Detailed Report'}
+        </h3>
+        
+        <div className="mb-6">
+          <p className="text-gray-600 mb-4">Preparing report...</p>
+          
+          {type === 'summary' && (
+            <div className="space-y-4">
+              {/* Active Medications - Show immediately */}
+              {medications && medications.filter(m => m.status === 'Active').length > 0 && (
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <h4 className="font-medium text-green-900 mb-2">Active Medications:</h4>
+                  <div className="space-y-2">
+                    {medications
+                      .filter(m => m.status === 'Active')
+                      .map((med, index) => (
+                        <div key={index} className="text-green-800 text-sm">
+                          <span className="font-medium">{med.medication_name}</span>
+                          {med.dosage && <span className="ml-2">- {med.dosage}</span>}
+                          {med.prescribed_by && <span className="ml-2">(Prescribed by: {med.prescribed_by})</span>}
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Loading indicator */}
+              <div className="flex items-center justify-center p-6 bg-gray-50 rounded-lg">
+                <div className="text-center">
+                  <Loader className="h-6 w-6 animate-spin mx-auto mb-3 text-teal-500" />
+                  <p className="text-gray-600 text-sm">Preparing report...</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        <div className="flex justify-between">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          
+          <button
+            disabled
+            className="px-4 py-2 bg-gray-300 text-gray-500 rounded-md cursor-not-allowed"
+          >
+            Download PDF
+          </button>
         </div>
       </div>
     );
@@ -625,6 +723,24 @@ export const GenerateReport = ({
         
         {type === 'summary' && (
           <div className="space-y-4">
+            {/* Active Medications */}
+            {medications && medications.filter(m => m.status === 'Active').length > 0 && (
+              <div className="bg-green-50 p-4 rounded-lg">
+                <h4 className="font-medium text-green-900 mb-2">Active Medications:</h4>
+                <div className="space-y-2">
+                  {medications
+                    .filter(m => m.status === 'Active')
+                    .map((med, index) => (
+                      <div key={index} className="text-green-800 text-sm">
+                        <span className="font-medium">{med.medication_name}</span>
+                        {med.dosage && <span className="ml-2">- {med.dosage}</span>}
+                        {med.prescribed_by && <span className="ml-2">(Prescribed by: {med.prescribed_by})</span>}
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+            
             {/* Diary Summary */}
             {diarySummary && (
               <div className="bg-blue-50 p-4 rounded-lg">

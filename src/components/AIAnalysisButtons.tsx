@@ -5,6 +5,7 @@ import { queryGemini } from '../lib/gemini';
 import { getCurrentRegion } from '../lib/regionDetection';
 import type { DiaryEntry, Symptom } from '../types/database';
 import { error as logError } from '../utils/logger';
+import AIDuplicateWarningModal from './AIDuplicateWarningModal';
 
 interface AIAnalysisButtonsProps {
   patientId: string;
@@ -13,6 +14,7 @@ interface AIAnalysisButtonsProps {
   patient?: { full_name: string; notes: string | null; dob: string; gender: string; relationship: string } | null;
   onSuccess: () => void;
   autoCreate?: boolean; // Added to control behavior
+  onOpenDiaryEntry?: (entry: DiaryEntry) => void; // Callback to open diary entry
 }
 
 export default function AIAnalysisButtons({
@@ -21,14 +23,42 @@ export default function AIAnalysisButtons({
   symptoms, 
   patient,
   onSuccess,
-  autoCreate = true // Default to true for backward compatibility
+  autoCreate = true, // Default to true for backward compatibility
+  onOpenDiaryEntry
 }: AIAnalysisButtonsProps) {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<{[key: string]: string} | null>(null);
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+  const [pendingAnalysisType, setPendingAnalysisType] = useState<string | null>(null);
+  const [previousEntry, setPreviousEntry] = useState<DiaryEntry | null>(null);
+
+  // Check if there's already an AI entry of the same type for today
+  const checkForDuplicateAIEntry = (type: string): DiaryEntry | null => {
+    const today = new Date().toISOString().split('T')[0];
+    return diaryEntries.find(entry => 
+      entry.entry_type === 'AI' && 
+      entry.ai_type === type && 
+      entry.date === today
+    ) || null;
+  };
 
   const handleAnalysis = async (type: string) => {
+    // Check for duplicate AI entry
+    const duplicateEntry = checkForDuplicateAIEntry(type);
+    
+    if (duplicateEntry && autoCreate) {
+      setPreviousEntry(duplicateEntry);
+      setPendingAnalysisType(type);
+      setShowDuplicateWarning(true);
+      return;
+    }
+    
+    await performAnalysis(type);
+  };
+
+  const performAnalysis = async (type: string) => {
     setLoading(type);
     setError(null);
     setSuccessMessage(null);
@@ -132,6 +162,30 @@ export default function AIAnalysisButtons({
     }
   };
 
+  const handleOpenPreviousEntry = () => {
+    if (previousEntry && onOpenDiaryEntry) {
+      onOpenDiaryEntry(previousEntry);
+    }
+    setShowDuplicateWarning(false);
+    setPreviousEntry(null);
+    setPendingAnalysisType(null);
+  };
+
+  const handleContinueWithNewEntry = () => {
+    setShowDuplicateWarning(false);
+    if (pendingAnalysisType) {
+      performAnalysis(pendingAnalysisType);
+    }
+    setPreviousEntry(null);
+    setPendingAnalysisType(null);
+  };
+
+  const handleCloseDuplicateWarning = () => {
+    setShowDuplicateWarning(false);
+    setPreviousEntry(null);
+    setPendingAnalysisType(null);
+  };
+
   return (
     <div className="w-full">
       {error && (
@@ -222,6 +276,18 @@ export default function AIAnalysisButtons({
             </div>
           )}
         </>
+      )}
+
+      {/* AI Duplicate Warning Modal */}
+      {previousEntry && (
+        <AIDuplicateWarningModal
+          isOpen={showDuplicateWarning}
+          onClose={handleCloseDuplicateWarning}
+          onOpenPrevious={handleOpenPreviousEntry}
+          onContinue={handleContinueWithNewEntry}
+          aiType={pendingAnalysisType || ''}
+          previousEntry={previousEntry}
+        />
       )}
     </div>
   );

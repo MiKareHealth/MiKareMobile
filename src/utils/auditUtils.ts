@@ -10,7 +10,7 @@ const auditError = (...args: any[]) => {
   console.error('[AUDIT ERROR]', ...args);
 };
 
-export type AuditEventType = 'login' | 'logout' | 'password_change' | 'patient_add' | 'patient_delete' | 'profile_update' | 'subscription_update';
+export type AuditEventType = 'login' | 'logout' | 'password_change' | 'password_reset_attempt' | 'patient_add' | 'patient_delete' | 'profile_update' | 'subscription_update';
 
 export interface AuditEvent {
   user_id: string;
@@ -298,5 +298,30 @@ export const logPasswordChangeEvent = async (userId: string, supabaseClient?: an
     user_agent: userAgent,
     ip: ip,
     success: true
+  }, supabaseClient);
+};
+
+/**
+ * Log password reset attempt event
+ */
+export const logPasswordResetAttemptEvent = async (email: string, success: boolean, supabaseClient?: any): Promise<void> => {
+  auditLog('🔄 PASSWORD RESET ATTEMPT EVENT TRIGGERED');
+  auditLog('Email:', email);
+  auditLog('Success:', success);
+  auditLog('Supabase client provided:', !!supabaseClient);
+  
+  const userAgent = navigator.userAgent;
+  const ip = await getClientIP();
+  
+  auditLog('User Agent:', userAgent);
+  auditLog('IP Address:', ip);
+  
+  await insertAuditEvent({
+    user_id: email, // Use email as identifier since user might not exist
+    event_type: 'password_reset_attempt',
+    user_agent: userAgent,
+    ip: ip,
+    success: success,
+    context: { email: email }
   }, supabaseClient);
 };

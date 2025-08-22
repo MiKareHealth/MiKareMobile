@@ -125,13 +125,16 @@ export const addMedication = async (
   try {
     const supabase = await getSupabaseClient();
     
+    // Determine status - if end date is set, status should be Inactive
+    const finalStatus = data.endDate && data.endDate.trim() !== '' ? 'Inactive' : normalizeStatus(data.status);
+    
     const medicationData = {
       profile_id: patientId,
       medication_name: data.medicationName.trim(),
       start_date: data.startDate,
       end_date: data.endDate || null,
       dosage: data.dosage.trim(),
-      status: normalizeStatus(data.status),
+      status: finalStatus,
       prescribed_by: data.prescribedBy?.trim() || null,
       notes: data.notes?.trim() || null
     };

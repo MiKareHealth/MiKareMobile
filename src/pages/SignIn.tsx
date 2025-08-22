@@ -9,6 +9,8 @@ import RegionSelector from '../components/RegionSelector';
 import { Region, setUserRegion } from '../lib/regionDetection';
 import { SIGNIN_IMAGE, SIGNIN_VIDEO, MIKARE_LOGO } from '../config/branding';
 import { logLoginEvent } from '../utils/auditUtils';
+import { logPasswordResetAttemptEvent } from '../utils/auditUtils';
+import { getLockoutState, incrementFailedAttempts, clearLockout, formatLockoutTime } from '../utils/securityUtils';
 
 // Forgot Password Modal Component
 const ForgotPasswordModal = ({ 
@@ -39,16 +41,28 @@ const ForgotPasswordModal = ({
     try {
       const client = await getSupabaseClient();
       const { error } = await client.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password?email=${encodeURIComponent(email)}`
+        redirectTo: `${window.location.origin}/reset-password`
       });
 
       if (error) {
+        // Log failed password reset attempt
+        logPasswordResetAttemptEvent(email, false, client).catch((err) => {
+          logError('Failed to log password reset attempt audit event:', err);
+        });
         setMessage({ type: 'error', text: 'Failed to send reset email. Please try again.' });
       } else {
+        // Log successful password reset attempt
+        logPasswordResetAttemptEvent(email, true, client).catch((err) => {
+          logError('Failed to log password reset attempt audit event:', err);
+        });
         setMessage({ type: 'success', text: 'If that account exists, you\'ll receive a reset link.' });
         onSuccess();
       }
     } catch (err) {
+      // Log failed password reset attempt
+      logPasswordResetAttemptEvent(email, false).catch((err) => {
+        logError('Failed to log password reset attempt audit event:', err);
+      });
       setMessage({ type: 'error', text: 'An unexpected error occurred. Please try again.' });
     } finally {
       setLoading(false);
@@ -137,8 +151,7 @@ export default function SignIn() {
   const [selectedRegion, setSelectedRegion] = useState<Region>('USA');
   
   // New state for attempt tracking and lockout
-  const [attempts, setAttempts] = useState(0);
-  const [lockout, setLockout] = useState(false);
+  const [lockoutState, setLockoutState] = useState(getLockoutState());
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
   
@@ -182,28 +195,9 @@ export default function SignIn() {
     }
   }, [resetBanner]);
 
-  // Load attempts from localStorage on mount
+  // Load lockout state from localStorage on mount
   useEffect(() => {
-    const storedAttempts = localStorage.getItem('mikare_login_attempts');
-    const attemptTime = localStorage.getItem('mikare_attempt_time');
-    
-    if (storedAttempts && attemptTime) {
-      const attempts = parseInt(storedAttempts, 10);
-      const time = parseInt(attemptTime, 10);
-      const now = Date.now();
-      
-      // Reset attempts after 5 minutes
-      if (now - time < 5 * 60 * 1000) {
-        setAttempts(attempts);
-        if (attempts >= 3) {
-          setLockout(true);
-        }
-      } else {
-        // Clear expired attempts
-        localStorage.removeItem('mikare_login_attempts');
-        localStorage.removeItem('mikare_attempt_time');
-      }
-    }
+    setLockoutState(getLockoutState());
   }, []);
 
   useEffect(() => {
@@ -277,28 +271,21 @@ export default function SignIn() {
   };
 
   const incrementAttempts = () => {
-    const newAttempts = attempts + 1;
-    setAttempts(newAttempts);
-    localStorage.setItem('mikare_login_attempts', newAttempts.toString());
-    localStorage.setItem('mikare_attempt_time', Date.now().toString());
-    
-    if (newAttempts >= 3) {
-      setLockout(true);
-    }
+    const newState = incrementFailedAttempts();
+    setLockoutState(newState);
   };
 
   const resetAttempts = () => {
-    setAttempts(0);
-    setLockout(false);
-    localStorage.removeItem('mikare_login_attempts');
-    localStorage.removeItem('mikare_attempt_time');
+    clearLockout();
+    setLockoutState(getLockoutState());
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (lockout) {
-      setError('Too many failed attempts. Please reset your password.');
+    if (lockoutState.isLocked) {
+      const remainingTime = formatLockoutTime(lockoutState.remainingLockoutTime);
+      setError(`Account temporarily locked. Please try again in ${remainingTime} or reset your password.`);
       return;
     }
     
@@ -330,10 +317,10 @@ export default function SignIn() {
         incrementAttempts();
         
         // Provide neutral error message without revealing specific details
-        if (attempts + 1 >= 3) {
-          setError('Too many failed attempts. Please reset your password.');
-        } else if (attempts + 1 === 2) {
-          setError('Invalid email or password. Warning: one more failed attempt before password reset is required.');
+        if (lockoutState.attempts + 1 >= 3) {
+          setError('Too many failed attempts. Account will be temporarily locked.');
+        } else if (lockoutState.attempts + 1 === 2) {
+          setError('Invalid email or password. Warning: one more failed attempt before account lockout.');
         } else {
           setError('Invalid email or password. Please try again.');
         }
@@ -595,16 +582,16 @@ export default function SignIn() {
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      disabled={lockout}
+                      disabled={lockoutState.isLocked}
                       className={`block w-full rounded-md border-2 shadow-sm px-4 py-3 text-base transition-colors duration-200 ${
-                        lockout 
+                        lockoutState.isLocked 
                           ? 'border-red-300 bg-gray-100 cursor-not-allowed' 
                           : 'border-gray-300 focus:border-teal-500 focus:ring-teal-500'
                       }`}
                       aria-label="Password"
                       data-testid="password-input"
                     />
-                    {!lockout && (
+                    {!lockoutState.isLocked && (
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
@@ -618,7 +605,7 @@ export default function SignIn() {
                         )}
                       </button>
                     )}
-                    {lockout && (
+                    {lockoutState.isLocked && (
                       <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
                         <Lock className="h-5 w-5 text-red-400" aria-hidden="true" />
                       </div>
@@ -626,18 +613,18 @@ export default function SignIn() {
                   </div>
                   
                   {/* Attempt warning */}
-                  {attempts === 2 && !lockout && (
+                  {lockoutState.attempts === 2 && !lockoutState.isLocked && (
                     <div className="mt-2 text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-md p-2">
                       <AlertCircle className="h-4 w-4 inline mr-1" />
-                      Warning: one more failed attempt before password reset is required.
+                      Warning: one more failed attempt before account lockout.
                     </div>
                   )}
                   
                   {/* Lockout message */}
-                  {lockout && (
+                  {lockoutState.isLocked && (
                     <div className="mt-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-2">
                       <Lock className="h-4 w-4 inline mr-1" />
-                      Account temporarily locked. Please reset your password.
+                      Account temporarily locked. Please try again later or reset your password.
                     </div>
                   )}
                 </div>
@@ -713,10 +700,10 @@ export default function SignIn() {
                 <div>
                   <button
                     type="submit"
-                    disabled={loading || lockout}
+                    disabled={loading || lockoutState.isLocked}
                     className="w-full bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-semibold py-3 px-4 rounded-md shadow-md hover:shadow-lg transition-all duration-200 focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {loading ? 'Signing in...' : lockout ? 'Account Locked' : 'Sign in'}
+                    {loading ? 'Signing in...' : lockoutState.isLocked ? 'Account Locked' : 'Sign in'}
                   </button>
                   <div className="mt-4">
                     {showDemoButton && (
@@ -736,7 +723,7 @@ export default function SignIn() {
                       </Link>
                     </div>
                     <div className="text-xs text-center mt-2 text-gray-400">
-                      version 1.2.27
+                      version 1.2.30
                     </div>
                   </div>
                 </div>

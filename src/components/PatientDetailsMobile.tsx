@@ -1200,6 +1200,7 @@ export default function PatientDetailsMobile({
               patient={patient}
               onSuccess={onRefresh}
               autoCreate={!isFreePlan}
+              onOpenDiaryEntry={onEditDiaryEntry}
             />
           </SubscriptionFeatureBlock>
         </div>
