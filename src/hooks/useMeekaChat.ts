@@ -15,6 +15,10 @@ import { useMeekaAI } from './useMeekaAI';
 export function useMeekaChat() {
   const navigate = useNavigate();
   
+  // Local state for processing and changes - must be declared before hooks that use them
+  const [isProcessingInsertion, setIsProcessingInsertion] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  
   // Use modular state management
   const {
     messages,
@@ -55,10 +59,6 @@ export function useMeekaChat() {
     refreshTable,
     setHasChanges
   );
-
-  // Local state for processing and changes
-  const [isProcessingInsertion, setIsProcessingInsertion] = useState(false);
-  const [hasChanges, setHasChanges] = useState(false);
 
   // Refresh data when chat is closed if there were changes
   useEffect(() => {
