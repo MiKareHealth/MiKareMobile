@@ -25,6 +25,8 @@ import DiaryEntryModal from '../components/DiaryEntryModal';
 import SymptomModal from '../components/SymptomModal';
 import { MdOutlineSick } from 'react-icons/md';
 import { log, error as logError } from '../utils/logger';
+import { useFreePlanUsage } from '../hooks/useFreePlanUsage';
+import { Check, X } from 'lucide-react';
 
 interface Profile {
   username: string;
@@ -211,6 +213,7 @@ export default function Dashboard() {
   const { isFreePlan } = useSubscription();
   const [showDiaryEntryModal, setShowDiaryEntryModal] = useState(false);
   const [showSymptomModal, setShowSymptomModal] = useState(false);
+  const { diaryEntriesUsed, aiAnalysisUsed, canAddDiaryEntry, canUseAI, loading: usageLoading, refresh: refreshUsage } = useFreePlanUsage();
 
   // Fetch user and profile data on component mount
   useEffect(() => {
@@ -385,6 +388,65 @@ export default function Dashboard() {
               onSubscribe={() => {}}
               initialExpanded={false}
             />
+            
+            {/* Free Plan Usage Status */}
+            <div className="bg-white shadow-sm rounded-xl p-6 mt-4 border border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Free Plan Usage</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <FileText className="h-5 w-5 text-teal-600 mr-3" />
+                    <span className="text-gray-700">Add Diary Entry</span>
+                  </div>
+                  <div className="flex items-center">
+                    {usageLoading ? (
+                      <div className="animate-spin h-4 w-4 border-2 border-teal-500 border-t-transparent rounded-full"></div>
+                    ) : diaryEntriesUsed > 0 ? (
+                      <div className="flex items-center text-green-600">
+                        <Check className="h-4 w-4 mr-1" />
+                        <span className="text-sm font-medium">Completed</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center text-gray-500">
+                        <X className="h-4 w-4 mr-1" />
+                        <span className="text-sm">Available</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <AlertCircle className="h-5 w-5 text-purple-600 mr-3" />
+                    <span className="text-gray-700">AI Analysis</span>
+                  </div>
+                  <div className="flex items-center">
+                    {usageLoading ? (
+                      <div className="animate-spin h-4 w-4 border-2 border-purple-500 border-t-transparent rounded-full"></div>
+                    ) : aiAnalysisUsed > 0 ? (
+                      <div className="flex items-center text-green-600">
+                        <Check className="h-4 w-4 mr-1" />
+                        <span className="text-sm font-medium">Completed</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center text-gray-500">
+                        <X className="h-4 w-4 mr-1" />
+                        <span className="text-sm">Available</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              {(diaryEntriesUsed > 0 || aiAnalysisUsed > 0) && (
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    Great! You've tried MiKare's features. 
+                    <a href="/settings" className="ml-1 font-medium underline">Upgrade your plan</a> to continue using these features and unlock unlimited access.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -409,7 +471,10 @@ export default function Dashboard() {
         onClose={() => setShowDiaryEntryModal(false)}
         profileId={selectedPatientId || ''}
         selectedDate={new Date()}
-        onEntrySaved={refreshPatients}
+        onEntrySaved={() => {
+          refreshPatients();
+          refreshUsage();
+        }}
       />
       <SymptomModal
         isOpen={showSymptomModal}

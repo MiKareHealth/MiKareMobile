@@ -205,6 +205,46 @@ export function usePatientData(patientId: string) {
     }
   };
 
+  // Add new functions to check free plan usage
+  const checkFreePlanUsage = async () => {
+    try {
+      const supabase = await getSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return { diaryEntriesUsed: 0, aiAnalysisUsed: 0 };
+
+      // First get all patients for the user
+      const { data: patientsData } = await supabase
+        .from('patients')
+        .select('id')
+        .eq('user_id', user.id);
+
+      if (!patientsData || patientsData.length === 0) {
+        return { diaryEntriesUsed: 0, aiAnalysisUsed: 0 };
+      }
+
+      const patientIds = patientsData.map(p => p.id);
+
+      // Count total diary entries for the user across all patients
+      const { data: diaryEntriesData } = await supabase
+        .from('diary_entries')
+        .select('id, entry_type, ai_type')
+        .in('profile_id', patientIds);
+
+      if (!diaryEntriesData) return { diaryEntriesUsed: 0, aiAnalysisUsed: 0 };
+
+      const diaryEntriesUsed = diaryEntriesData.length;
+      const aiAnalysisUsed = diaryEntriesData.filter(entry => 
+        entry.entry_type === 'AI' && entry.ai_type
+      ).length;
+
+      return { diaryEntriesUsed, aiAnalysisUsed };
+    } catch (err) {
+      logError('Error checking free plan usage:', err);
+      return { diaryEntriesUsed: 0, aiAnalysisUsed: 0 };
+    }
+  };
+
   return {
     user,
     patient,
@@ -218,6 +258,7 @@ export function usePatientData(patientId: string) {
     loading,
     error,
     refresh: fetchData,
-    refreshTable
+    refreshTable,
+    checkFreePlanUsage
   };
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, AlertCircle, Lock, CheckCircle } from 'lucide-react';
 import { tokens, theme } from '../styles/tokens';
 import { themeClasses } from '../styles/themeUtils';
@@ -10,7 +10,7 @@ import { Region, setUserRegion } from '../lib/regionDetection';
 import { SIGNIN_IMAGE, SIGNIN_VIDEO, MIKARE_LOGO } from '../config/branding';
 import { logLoginEvent } from '../utils/auditUtils';
 import { logPasswordResetAttemptEvent } from '../utils/auditUtils';
-import { getLockoutState, incrementFailedAttempts, clearLockout, formatLockoutTime } from '../utils/securityUtils';
+import { getLockoutState, incrementFailedAttempts, clearLockout, clearLockoutOnNavigation, formatLockoutTime } from '../utils/securityUtils';
 
 // Forgot Password Modal Component
 const ForgotPasswordModal = ({ 
@@ -139,6 +139,7 @@ const ForgotPasswordModal = ({
 
 export default function SignIn() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -465,6 +466,26 @@ export default function SignIn() {
     }, 3000);
   };
 
+  // Clear lockout state when navigating away from auth pages
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      clearLockout();
+    };
+    
+    const handlePopState = () => {
+      const currentPath = window.location.pathname;
+      clearLockoutOnNavigation(currentPath);
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
   return (
     <>
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center px-4 sm:px-6 lg:px-8 animate-fade-down">
@@ -718,7 +739,14 @@ export default function SignIn() {
                     )}
                     <div className="text-sm text-center mt-4">
                       Don't have an account?{' '}
-                      <Link to="/signup" className="font-medium text-teal-600 hover:text-teal-700 transition-colors">
+                      <Link 
+                        to="/signup" 
+                        className="font-medium text-teal-600 hover:text-teal-700 transition-colors"
+                        onClick={() => {
+                          // Don't clear lockout when navigating to signup
+                          // The warning should persist between sign-in and sign-up
+                        }}
+                      >
                         Sign up
                       </Link>
                     </div>

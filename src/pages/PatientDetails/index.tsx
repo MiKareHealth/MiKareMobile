@@ -11,6 +11,7 @@ import PatientDetailsDesktop from '../../components/PatientDetailsDesktop';
 import PatientDetailsMobile from '../../components/PatientDetailsMobile';
 import { usePatientData } from '../../hooks/usePatientData';
 import { useSubscription } from '../../hooks/useSubscription';
+import { useFreePlanUsage } from '../../hooks/useFreePlanUsage';
 import type { PatientDocument, DiaryEntry, Symptom } from '../../types/database';
 import { log } from '../../utils/logger';
 
@@ -37,6 +38,7 @@ export default function PatientDetails() {
   const [searchTerm, setSearchTerm] = useState<string>('');
   
   const { isFreePlan } = useSubscription();
+  const { refresh: refreshUsage } = useFreePlanUsage();
   
   const { patient, documents, symptoms, diaryEntries, medications, moodEntries, todaysMood, loading, error, refresh, refreshTable } = usePatientData(id!);
 
@@ -226,7 +228,10 @@ export default function PatientDetails() {
         onClose={() => setShowDiaryEntry(false)}
         profileId={id!}
         selectedDate={new Date()}
-        onEntrySaved={refresh}
+        onEntrySaved={() => {
+          refresh();
+          refreshUsage();
+        }}
         editEntry={selectedDiaryEntry}
         viewOnly={selectedDiaryEntry !== null && isFreePlan}
       />

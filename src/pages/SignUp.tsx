@@ -7,6 +7,7 @@ import { log, error as logError } from '../utils/logger';
 import RegionSelector from '../components/RegionSelector';
 import { Region, setUserRegion } from '../lib/regionDetection';
 import { SIGNIN_IMAGE, SIGNIN_VIDEO, MIKARE_LOGO } from '../config/branding';
+import { clearLockoutOnNavigation, clearLockout } from '../utils/securityUtils';
 
 export default function SignUp() {
   const navigate = useNavigate();
@@ -95,6 +96,27 @@ export default function SignUp() {
     };
     
     checkSupabaseStatus();
+  }, []);
+
+  // Clear lockout state when navigating away from auth pages
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // Clear lockout when leaving the page entirely
+      clearLockout();
+    };
+    
+    const handlePopState = () => {
+      const currentPath = window.location.pathname;
+      clearLockoutOnNavigation(currentPath);
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
   }, []);
 
   // Password validation effect
@@ -424,7 +446,14 @@ export default function SignUp() {
                 
                 <div className="text-sm text-center mt-4">
                   Already have an account?{' '}
-                  <Link to="/signin" className="font-medium text-teal-600 hover:text-teal-700 transition-colors">
+                  <Link 
+                    to="/signin" 
+                    className="font-medium text-teal-600 hover:text-teal-700 transition-colors"
+                    onClick={() => {
+                      // Don't clear lockout when navigating to signin
+                      // The warning should persist between sign-in and sign-up
+                    }}
+                  >
                     Sign in
                   </Link>
                 </div>

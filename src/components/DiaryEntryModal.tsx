@@ -12,6 +12,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { DocumentDownloadButton } from './DocumentDownloadButton';
 import { useSubscription } from '../hooks/useSubscription';
 import { log, error as logError } from '../utils/logger';
+import { useFreePlanUsage } from '../hooks/useFreePlanUsage';
 
 interface DiaryEntryModalProps {
   isOpen: boolean;
@@ -72,9 +73,10 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
   
   const { preferences } = useUserPreferences();
   const { isFreePlan } = useSubscription();
+  const { canAddDiaryEntry } = useFreePlanUsage();
   
-  // Determine if we're in view-only mode (either by prop or subscription plan)
-  const isViewOnly = viewOnly || isFreePlan;
+  // Determine if we're in view-only mode (either by prop, subscription plan, or free plan usage)
+  const isViewOnly = viewOnly || isFreePlan || !canAddDiaryEntry;
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -775,12 +777,15 @@ const DiaryEntryModal: React.FC<DiaryEntryModalProps> = ({
           </button>
         </div>
 
-        {isViewOnly && isFreePlan && (
+        {isViewOnly && (isFreePlan || !canAddDiaryEntry) && (
           <div className="bg-amber-50 p-3 mx-4 mt-4 rounded-lg border border-amber-200">
             <div className="flex items-center">
               <Lock className="h-4 w-4 text-amber-600 mr-2" />
               <p className="text-sm text-amber-800">
-                Adding diary entries is available on paid plans.
+                {!canAddDiaryEntry 
+                  ? "You've used your free diary entry. Upgrade to continue adding entries."
+                  : "Adding diary entries is available on paid plans."
+                }
                 <a href="/settings" className="ml-1 font-medium underline">Upgrade your plan</a>
               </p>
             </div>

@@ -415,6 +415,42 @@ describe('SignIn Component', () => {
       expect(localStorageMock.removeItem).toHaveBeenCalledWith('mikare_login_attempts');
       expect(localStorageMock.removeItem).toHaveBeenCalledWith('mikare_attempt_time');
     });
+
+    it('persists warning message when navigating between sign-in and sign-up pages', () => {
+      // Set up 2 failed attempts in localStorage
+      localStorageMock.getItem.mockReturnValueOnce('2'); // 2 attempts
+      localStorageMock.getItem.mockReturnValueOnce(Date.now().toString()); // Recent time
+      
+      const { unmount } = renderSignIn();
+      
+      // Verify warning message is shown
+      expect(screen.getByText(/warning: one more failed attempt before account lockout/i)).toBeInTheDocument();
+      
+      // Simulate navigation to sign-up page (component unmount)
+      unmount();
+      
+      // Verify lockout state is NOT cleared when navigating between auth pages
+      expect(localStorageMock.removeItem).not.toHaveBeenCalledWith('mikare_login_attempts');
+      expect(localStorageMock.removeItem).not.toHaveBeenCalledWith('mikare_attempt_time');
+    });
+
+    it('clears lockout state when navigating to non-auth pages', () => {
+      // Set up 2 failed attempts in localStorage
+      localStorageMock.getItem.mockReturnValueOnce('2'); // 2 attempts
+      localStorageMock.getItem.mockReturnValueOnce(Date.now().toString()); // Recent time
+      
+      const { unmount } = renderSignIn();
+      
+      // Simulate navigation to a non-auth page by triggering beforeunload
+      window.dispatchEvent(new Event('beforeunload'));
+      
+      // Verify lockout state is cleared
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('mikare_login_attempts');
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('mikare_attempt_time');
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('mikare_lockout_until');
+      
+      unmount();
+    });
   });
 
   describe('Error Handling', () => {

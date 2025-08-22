@@ -158,6 +158,23 @@ export const clearLockout = (): void => {
 };
 
 /**
+ * Clear lockout state when navigating away from auth pages
+ */
+export const clearLockoutOnNavigation = (currentPath: string): void => {
+  // Only clear lockout if navigating to a page that's not sign-in or sign-up
+  if (currentPath !== '/signin' && currentPath !== '/signup') {
+    clearLockout();
+  }
+};
+
+/**
+ * Check if current path is an auth page
+ */
+export const isAuthPage = (path: string): boolean => {
+  return path === '/signin' || path === '/signup';
+};
+
+/**
  * Format remaining lockout time for display
  */
 export const formatLockoutTime = (milliseconds: number): string => {

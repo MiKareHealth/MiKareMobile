@@ -6,6 +6,7 @@ import { getCurrentRegion } from '../lib/regionDetection';
 import type { DiaryEntry, Symptom } from '../types/database';
 import { error as logError } from '../utils/logger';
 import AIDuplicateWarningModal from './AIDuplicateWarningModal';
+import { useFreePlanUsage } from '../hooks/useFreePlanUsage';
 
 interface AIAnalysisButtonsProps {
   patientId: string;
@@ -33,6 +34,7 @@ export default function AIAnalysisButtons({
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
   const [pendingAnalysisType, setPendingAnalysisType] = useState<string | null>(null);
   const [previousEntry, setPreviousEntry] = useState<DiaryEntry | null>(null);
+  const { canUseAI, refresh: refreshUsage } = useFreePlanUsage();
 
   // Check if there's already an AI entry of the same type for today
   const checkForDuplicateAIEntry = (type: string): DiaryEntry | null => {
@@ -154,6 +156,9 @@ export default function AIAnalysisButtons({
       // Notify parent component to refresh data
       onSuccess();
       
+      // Refresh free plan usage data
+      refreshUsage();
+      
     } catch (err) {
       logError('AI Analysis error:', err);
       setError((err as Error).message);
@@ -206,7 +211,7 @@ export default function AIAnalysisButtons({
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-4">
         <button
           onClick={() => handleAnalysis('symptom-analysis')}
-          disabled={!!loading || !autoCreate}
+          disabled={!!loading || !autoCreate || !canUseAI}
           className="flex items-center justify-center p-2 sm:p-4 bg-gradient-to-br from-indigo-50 via-purple-50/50 to-indigo-50/30 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 hover:translate-y-[-2px] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
         >
           <div className="text-center">
@@ -219,7 +224,7 @@ export default function AIAnalysisButtons({
 
         <button
           onClick={() => handleAnalysis('questions')}
-          disabled={!!loading || !autoCreate}
+          disabled={!!loading || !autoCreate || !canUseAI}
           className="flex items-center justify-center p-2 sm:p-4 bg-gradient-to-br from-emerald-50 via-teal-50/50 to-emerald-50/30 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 hover:translate-y-[-2px] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
         >
           <div className="text-center">
@@ -232,7 +237,7 @@ export default function AIAnalysisButtons({
 
         <button
           onClick={() => handleAnalysis('terminology')}
-          disabled={!!loading || !autoCreate}
+          disabled={!!loading || !autoCreate || !canUseAI}
           className="flex items-center justify-center p-2 sm:p-4 bg-gradient-to-br from-blue-50 via-sky-50/50 to-blue-50/30 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 hover:translate-y-[-2px] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
         >
           <div className="text-center">
@@ -245,7 +250,7 @@ export default function AIAnalysisButtons({
 
         <button
           onClick={() => handleAnalysis('trends')}
-          disabled={!!loading || !autoCreate}
+          disabled={!!loading || !autoCreate || !canUseAI}
           className="flex items-center justify-center p-2 sm:p-4 bg-gradient-to-br from-amber-50 via-yellow-50/50 to-amber-50/30 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 hover:translate-y-[-2px] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
         >
           <div className="text-center">

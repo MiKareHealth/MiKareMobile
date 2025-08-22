@@ -38,6 +38,7 @@ import type { PlanKey } from '../config/pricing';
 import { error as logError } from '../utils/logger';
 import { logLogoutEvent, testAuditTable, maskIPForDisplay } from '../utils/auditUtils';
 import { useAuditEvents } from '../hooks/useAuditEvents';
+import { useFreePlanUsage } from '../hooks/useFreePlanUsage';
 
 // Define timezone options
 const timezoneOptions = [
@@ -105,6 +106,7 @@ export default function Settings() {
   const { formatDateTime } = useUserPreferences();
   const { setShowSplash } = useSplash(); 
   const { isFreePlan } = useSubscription();
+  const { diaryEntriesUsed, aiAnalysisUsed, loading: usageLoading } = useFreePlanUsage();
   const [profileForm, setProfileForm] = useState({
     full_name: '',
     timezone: '',
@@ -829,6 +831,69 @@ export default function Settings() {
                 </div>
               </div>
               
+              {/* Free Plan Usage Status */}
+              {isFreePlan && (
+                <div className="mb-6">
+                  <h4 className="font-medium text-gray-800 mb-3 flex items-center">
+                    <CreditCard className="h-5 w-5 text-teal-600 mr-2" />
+                    Free Plan Usage
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center">
+                        <FileText className="h-4 w-4 text-teal-600 mr-2" />
+                        <span className="text-gray-700">Add Diary Entry</span>
+                      </div>
+                      <div className="flex items-center">
+                        {usageLoading ? (
+                          <div className="animate-spin h-4 w-4 border-2 border-teal-500 border-t-transparent rounded-full"></div>
+                        ) : diaryEntriesUsed > 0 ? (
+                          <div className="flex items-center text-green-600">
+                            <Check className="h-4 w-4 mr-1" />
+                            <span className="text-sm font-medium">Completed</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center text-gray-500">
+                            <X className="h-4 w-4 mr-1" />
+                            <span className="text-sm">Available</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center">
+                        <AlertCircle className="h-4 w-4 text-purple-600 mr-2" />
+                        <span className="text-gray-700">AI Analysis</span>
+                      </div>
+                      <div className="flex items-center">
+                        {usageLoading ? (
+                          <div className="animate-spin h-4 w-4 border-2 border-purple-500 border-t-transparent rounded-full"></div>
+                        ) : aiAnalysisUsed > 0 ? (
+                          <div className="flex items-center text-green-600">
+                            <Check className="h-4 w-4 mr-1" />
+                            <span className="text-sm font-medium">Completed</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center text-gray-500">
+                            <X className="h-4 w-4 mr-1" />
+                            <span className="text-sm">Available</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {(diaryEntriesUsed > 0 || aiAnalysisUsed > 0) && (
+                    <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm text-blue-800">
+                        Great! You've tried MiKare's features. Upgrade to continue using these features and unlock unlimited access.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="mb-6">
                 <h4 className="font-medium text-gray-800 mb-3 flex items-center">
                   <Users className="h-5 w-5 text-teal-600 mr-2" />
