@@ -98,7 +98,7 @@ export default function Settings() {
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [timeFormat, setTimeFormat] = useState<'12h' | '24h'>(preferences.timeFormat);
-  const [sessionLength, setSessionLength] = useState<number>(30);
+  const [sessionLength, setSessionLength] = useState<number>(preferences.sessionTimeout);
   const [userSessions, setUserSessions] = useState<UserSession[]>([]);
   const [latestSession, setLatestSession] = useState<UserSession | null>(null);
   const [showSessionHistory, setShowSessionHistory] = useState(true);
@@ -142,7 +142,9 @@ export default function Settings() {
           .eq('id', currentUser.id)
           .single();
           
-        if (profileError) throw profileError;
+        if (profileError && profileError.code !== 'PGRST116') { // PGRST116 is "not found"
+          throw profileError;
+        }
         
         if (profile) {
           setTimezone(profile.timezone || preferences.timezone);
@@ -162,8 +164,24 @@ export default function Settings() {
           if (profile.avatar_url) {
             setPhotoPreview(profile.avatar_url);
           }
+        } else {
+          // Profile doesn't exist, set defaults
+          setTimezone(preferences.timezone);
+          setTimeFormat(preferences.timeFormat);
+          setSessionLength(30);
+          setProfile(null);
+          
+          // Initialize form data with defaults
+          setProfileForm({
+            full_name: currentUser.user_metadata?.full_name || '',
+            timezone: getBrowserTimezone(),
+            address: '',
+            phone_number: '',
+          });
+        }
 
-          // Fetch user's session history
+        // Fetch user's session history (non-blocking)
+        try {
           const { data: sessionsData, error: sessionsError } = await supabase
             .from('user_sessions')
             .select('*')
@@ -171,12 +189,13 @@ export default function Settings() {
             .order('login_time', { ascending: false })
             .limit(15);
 
-          if (sessionsError) throw sessionsError;
-          
-          if (sessionsData && sessionsData.length > 0) {
+          if (!sessionsError && sessionsData && sessionsData.length > 0) {
             setUserSessions(sessionsData);
             setLatestSession(sessionsData[0]);
           }
+        } catch (sessionErr) {
+          // Log but don't fail the entire settings load
+          logError('Error fetching session history:', sessionErr);
         }
       } catch (err) {
         logError('Error fetching settings:', err);
@@ -268,17 +287,48 @@ export default function Settings() {
     setError(null);
     try {
       const supabase = await getSupabaseClient();
-      // Update settings
-      const { error: updateError } = await supabase
+      
+      // First, check if profile exists
+      const { data: existingProfile, error: checkError } = await supabase
         .from('profiles')
-        .update({
-          timezone: profileForm.timezone,
-          time_format: timeFormat,
-          preferred_session_length: sessionLength,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id);
-      if (updateError) throw updateError;
+        .select('id')
+        .eq('id', user.id)
+        .single();
+      
+      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "not found"
+        throw checkError;
+      }
+      
+      let result;
+      if (existingProfile) {
+        // Profile exists, update it
+        result = await supabase
+          .from('profiles')
+          .update({
+            timezone: profileForm.timezone,
+            time_format: timeFormat,
+            preferred_session_length: sessionLength,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id);
+      } else {
+        // Profile doesn't exist, create it
+        result = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            username: user.email,
+            full_name: profileForm.full_name,
+            timezone: profileForm.timezone,
+            time_format: timeFormat,
+            preferred_session_length: sessionLength,
+            address: profileForm.address,
+            phone_number: profileForm.phone_number,
+            updated_at: new Date().toISOString()
+          });
+      }
+      
+      if (result.error) throw result.error;
       setSuccessMessage('Settings updated successfully');
       await refreshPreferences();
     } catch (err) {

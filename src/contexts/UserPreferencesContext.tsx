@@ -7,6 +7,7 @@ import { error as logError } from '../utils/logger';
 interface UserPreferences {
   timezone: string;
   timeFormat: '12h' | '24h';
+  sessionTimeout: number;
   isLoading: boolean;
 }
 
@@ -20,6 +21,7 @@ interface UserPreferencesContextType {
 const defaultPreferences: UserPreferences = {
   timezone: 'UTC',
   timeFormat: '12h',
+  sessionTimeout: 30,
   isLoading: true,
 };
 
@@ -49,7 +51,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
         // Get user preferences from profiles table
         const { data, error } = await supabaseClient
           .from('profiles')
-          .select('timezone, time_format')
+          .select('timezone, time_format, preferred_session_length')
           .eq('id', user.id)
           .single();
         if (error) {
@@ -60,6 +62,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
         setPreferences({
           timezone: data?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
           timeFormat: (data?.time_format as '12h' | '24h') || '12h',
+          sessionTimeout: data?.preferred_session_length || 30,
           isLoading: false,
         });
       } else {
