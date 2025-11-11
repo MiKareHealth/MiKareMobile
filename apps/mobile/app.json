@@ -10,7 +10,12 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "icon": "./assets/images/apple-touch-icon.png"
+      "icon": "./assets/images/apple-touch-icon.png",
+      "bundleIdentifier": "com.mikare.mobile",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -18,7 +23,9 @@
         "backgroundColor": "#ffffff"
       },
       "icon": "./assets/images/android-chrome-512x512.png",
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.mikare.mobile",
+      "versionCode": 1
     },
     "web": {
       "bundler": "metro",
@@ -41,6 +48,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a8ce3391-3c7e-4959-a0e7-eea9c9c587e7"
+      }
+    },
+    "owner": "mikare"
   }
 }

@@ -35,11 +35,11 @@ export default function ProfilesScreen() {
   }, []);
 
   const handleAddProfile = () => {
-    Alert.alert('Add Profile', 'Add profile functionality coming soon!');
+    router.push('/screens/AddProfile');
   };
 
   const handleEditProfile = (patient: Patient) => {
-    Alert.alert('Edit Profile', `Edit profile for ${patient.full_name}`);
+    router.push(`/screens/EditProfile?patientId=${patient.id}`);
   };
 
   const handleDeleteProfile = (patient: Patient) => {
@@ -58,15 +58,15 @@ export default function ProfilesScreen() {
   };
 
   const handleLogMood = (patient: Patient) => {
-    Alert.alert('Log Mood', `Log mood for ${patient.full_name}`);
+    router.push(`/screens/MoodLog?patientId=${patient.id}`);
   };
 
   const handleAddDiary = (patient: Patient) => {
-    Alert.alert('Add Diary', `Add diary entry for ${patient.full_name}`);
+    router.push(`/screens/AddDiaryEntry?patientId=${patient.id}`);
   };
 
   const handleAddSymptom = (patient: Patient) => {
-    Alert.alert('Add Symptom', `Add symptom for ${patient.full_name}`);
+    router.push(`/screens/AddSymptom?patientId=${patient.id}`);
   };
 
   const handleViewDetails = (patient: Patient) => {
@@ -262,33 +262,33 @@ export default function ProfilesScreen() {
                    <Text style={styles.addModalOptionText}>Add Symptom</Text>
                  </TouchableOpacity>
                  
-                 <TouchableOpacity 
+                 <TouchableOpacity
                    style={styles.addModalOption}
                    onPress={() => {
                      hideAddModal();
-                     Alert.alert('Add Medication', `Add medication for ${selectedPatient?.full_name}`);
+                     router.push(`/screens/AddMedication?patientId=${selectedPatient?.id}`);
                    }}
                  >
                    <IconSymbol name="pills" size={24} color="#008080" />
                    <Text style={styles.addModalOptionText}>Add Medication</Text>
                  </TouchableOpacity>
                  
-                 <TouchableOpacity 
+                 <TouchableOpacity
                    style={styles.addModalOption}
                    onPress={() => {
                      hideAddModal();
-                     Alert.alert('Add Document', `Add document for ${selectedPatient?.full_name}`);
+                     router.push(`/screens/AddDocument?patientId=${selectedPatient?.id}`);
                    }}
                  >
                    <IconSymbol name="camera.fill" size={24} color="#008080" />
                    <Text style={styles.addModalOptionText}>Add Document</Text>
                  </TouchableOpacity>
                  
-                 <TouchableOpacity 
+                 <TouchableOpacity
                    style={styles.addModalOption}
                    onPress={() => {
                      hideAddModal();
-                     Alert.alert('Add Note', `Add note for ${selectedPatient?.full_name}`);
+                     router.push(`/screens/AddNote?patientId=${selectedPatient?.id}`);
                    }}
                  >
                    <IconSymbol name="doc.text" size={24} color="#008080" />

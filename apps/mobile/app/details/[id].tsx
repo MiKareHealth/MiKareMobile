@@ -92,15 +92,15 @@ const AI_ANALYSIS_TYPES = [
     color: '#2563EB', // blue
   },
   {
-    type: 'summary',
-    title: 'Health Summary',
-    icon: 'description',
+    type: 'terminology',
+    title: 'Explain Terms',
+    icon: 'article',
     color: '#059669', // green
   },
   {
-    type: 'recommendations',
-    title: 'Recommendations',
-    icon: 'lightbulb',
+    type: 'trends',
+    title: 'Health Summary',
+    icon: 'description',
     color: '#D97706', // orange
   },
 ];
@@ -306,32 +306,32 @@ export default function PatientDetails() {
 
   const handleAddDiary = () => {
     hideAddModal();
-    Alert.alert('Add Diary', `Add diary entry for ${patient?.full_name}`);
+    router.push(`/screens/AddDiaryEntry?patientId=${id}`);
   };
 
   const handleAddSymptom = () => {
     hideAddModal();
-    Alert.alert('Add Symptom', `Add symptom for ${patient?.full_name}`);
+    router.push(`/screens/AddSymptom?patientId=${id}`);
   };
 
   const handleAddMedication = () => {
     hideAddModal();
-    Alert.alert('Add Medication', `Add medication for ${patient?.full_name}`);
+    router.push(`/screens/AddMedication?patientId=${id}`);
   };
 
   const handleAddDocument = () => {
     hideAddModal();
-    Alert.alert('Add Document', `Add document for ${patient?.full_name}`);
+    router.push(`/screens/AddDocument?patientId=${id}`);
   };
 
   const handleAddNote = () => {
     hideAddModal();
-    Alert.alert('Add Note', `Add note for ${patient?.full_name}`);
+    router.push(`/screens/AddNote?patientId=${id}`);
   };
 
   const handleLogMood = () => {
     hideAddModal();
-    Alert.alert('Log Mood', `Log mood for ${patient?.full_name}`);
+    router.push(`/screens/MoodLog?patientId=${id}`);
   };
 
   const handleSave = async () => {

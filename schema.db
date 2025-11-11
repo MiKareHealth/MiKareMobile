@@ -1,0 +1,163 @@
+The schema includes the following entities (excerpt):
+auth.users (federated login, core user accounts)
+profiles, patients, diary_entries, symptoms, medications, mood_entries, documents, contacts stripe_customers, stripe_subscriptions, stripe_orders
+audit_events, concierge_events, concierge_prefs Security: RLS policies applied per user/tenant.
+
+(Full schema provided is below in a SQL reference file. Not intended to be executed directly.)
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+
+CREATE TABLE public.audit_events (
+id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+user_id uuid NOT NULL,
+ 
+event_type USER-DEFINED NOT NULL,
+event_at timestamp with time zone NOT NULL DEFAULT now(), ip inet,
+user_agent text, region text,
+success boolean NOT NULL DEFAULT true, context jsonb NOT NULL DEFAULT '{}'::jsonb,
+CONSTRAINT audit_events_pkey PRIMARY KEY (id),
+CONSTRAINT audit_events_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.concierge_events (
+id uuid NOT NULL DEFAULT gen_random_uuid(), user_id uuid NOT NULL,
+occurred_at timestamp with time zone NOT NULL DEFAULT now(), intent text NOT NULL,
+confidence numeric NOT NULL, route text NOT NULL,
+result text NOT NULL CHECK (result = ANY (ARRAY['opened'::text, 'failed'::text, 'cancelled'::text])), meta jsonb NOT NULL DEFAULT '{}'::jsonb,
+CONSTRAINT concierge_events_pkey PRIMARY KEY (id),
+CONSTRAINT concierge_events_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.concierge_prefs ( user_id uuid NOT NULL,
+enabled boolean NOT NULL DEFAULT true, nudge_opt_in boolean NOT NULL DEFAULT false,
+updated_at timestamp with time zone NOT NULL DEFAULT now(), CONSTRAINT concierge_prefs_pkey PRIMARY KEY (user_id),
+CONSTRAINT concierge_prefs_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.diary_entries (
+ 
+id uuid NOT NULL DEFAULT gen_random_uuid(), profile_id uuid NOT NULL,
+entry_type USER-DEFINED NOT NULL, title text NOT NULL,
+date date NOT NULL, notes text,
+severity text,
+attendees ARRAY NOT NULL DEFAULT '{}'::text[], file_url text,
+created_at timestamp with time zone NOT NULL DEFAULT now(), updated_at timestamp with time zone NOT NULL DEFAULT now(), ai_type text,
+source_entries ARRAY NOT NULL DEFAULT '{}'::text[], CONSTRAINT diary_entries_pkey PRIMARY KEY (id),
+CONSTRAINT diary_entries_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.patients(id)
+);
+CREATE TABLE public.medications (
+id uuid NOT NULL DEFAULT gen_random_uuid(), profile_id uuid NOT NULL,
+medication_name text NOT NULL, start_date date NOT NULL,
+end_date date,
+dosage text NOT NULL,
+status USER-DEFINED NOT NULL,
+prescribed_by text, notes text,
+created_at timestamp with time zone NOT NULL DEFAULT now(), updated_at timestamp with time zone NOT NULL DEFAULT now(), CONSTRAINT medications_pkey PRIMARY KEY (id),
+CONSTRAINT medications_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.patients(id)
+);
+ 
+CREATE TABLE public.mood_entries (
+id uuid NOT NULL DEFAULT gen_random_uuid(), profile_id uuid NOT NULL,
+date date NOT NULL DEFAULT CURRENT_DATE,
+body integer NOT NULL CHECK (body >= 1 AND body <= 5), mind integer NOT NULL CHECK (mind >= 1 AND mind <= 5), sleep integer NOT NULL CHECK (sleep >= 1 AND sleep <= 5),
+mood integer NOT NULL CHECK (mood >= 1 AND mood <= 5), notes text,
+created_at timestamp with time zone NOT NULL DEFAULT now(), CONSTRAINT mood_entries_pkey PRIMARY KEY (id),
+CONSTRAINT mood_entries_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.patients(id)
+);
+CREATE TABLE public.patient_activities (
+id uuid NOT NULL DEFAULT gen_random_uuid(), patient_id uuid NOT NULL,
+title text NOT NULL,
+activity_type text NOT NULL,
+activity_date timestamp with time zone NOT NULL, follow_up_date timestamp with time zone,
+notes text,
+structured_outcome jsonb, created_by uuid NOT NULL,
+created_at timestamp with time zone NOT NULL DEFAULT now(), updated_at timestamp with time zone NOT NULL DEFAULT now(), CONSTRAINT patient_activities_pkey PRIMARY KEY (id),
+CONSTRAINT patient_activities_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id),
+CONSTRAINT patient_activities_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(id)
+);
+CREATE TABLE public.patient_documents (
+ 
+id uuid NOT NULL DEFAULT gen_random_uuid(), patient_id uuid NOT NULL,
+activity_id uuid,
+file_name text NOT NULL, file_type text NOT NULL, file_size bigint NOT NULL, file_url text NOT NULL, description text,
+uploaded_by uuid NOT NULL,
+uploaded_at timestamp with time zone NOT NULL DEFAULT now(), diary_entry_id uuid,
+summary text,
+CONSTRAINT patient_documents_pkey PRIMARY KEY (id),
+CONSTRAINT patient_documents_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(id),
+CONSTRAINT patient_documents_diary_entry_id_fkey FOREIGN KEY (diary_entry_id) REFERENCES public.diary_entries(id),
+CONSTRAINT patient_documents_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES auth.users(id),
+CONSTRAINT patient_documents_activity_id_fkey FOREIGN KEY (activity_id) REFERENCES public.patient_activities(id)
+);
+CREATE TABLE public.patients (
+id uuid NOT NULL DEFAULT gen_random_uuid(), user_id uuid NOT NULL,
+full_name text NOT NULL, dob date NOT NULL,
+gender USER-DEFINED NOT NULL,
+relationship text NOT NULL, country text NOT NULL,
+address text NOT NULL, phone_number text NOT NULL, photo_url text,
+ 
+notes text,
+created_at timestamp with time zone NOT NULL DEFAULT now(), updated_at timestamp with time zone NOT NULL DEFAULT now(), CONSTRAINT patients_pkey PRIMARY KEY (id),
+CONSTRAINT patients_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.profiles ( id uuid NOT NULL,
+username text UNIQUE, full_name text, avatar_url text,
+updated_at timestamp with time zone NOT NULL DEFAULT now(), address text,
+phone_number text,
+timezone text NOT NULL DEFAULT 'UTC'::text,
+time_format text NOT NULL DEFAULT '12h'::text, last_login timestamp with time zone,
+preferred_session_length integer NOT NULL DEFAULT 30, onboard_complete boolean NOT NULL DEFAULT false, show_splash boolean NOT NULL DEFAULT true,
+subscription_plan text DEFAULT 'MiKare Health - free plan'::text, subscription_status text DEFAULT 'inactive'::text,
+patient_limit integer DEFAULT 1,
+trial_started_at timestamp with time zone, trial_completed boolean DEFAULT false, CONSTRAINT profiles_pkey PRIMARY KEY (id),
+CONSTRAINT profiles_user_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.stripe_customers (
+id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+user_id uuid NOT NULL UNIQUE,
+ 
+customer_id text NOT NULL UNIQUE,
+created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), deleted_at timestamp with time zone,
+CONSTRAINT stripe_customers_pkey PRIMARY KEY (id),
+CONSTRAINT stripe_customers_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.stripe_orders (
+id integer NOT NULL DEFAULT nextval('stripe_orders_id_seq'::regclass), checkout_session_id text NOT NULL,
+payment_intent_id text, customer_id text NOT NULL, amount_subtotal integer,
+amount_total integer, currency text,
+payment_status text, status text,
+created_at timestamp with time zone DEFAULT now(), CONSTRAINT stripe_orders_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.stripe_subscriptions (
+id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+customer_id text NOT NULL UNIQUE, subscription_id text,
+price_id text,
+current_period_start bigint, current_period_end bigint,
+cancel_at_period_end boolean DEFAULT false, payment_method_brand text,
+payment_method_last4 text, status text NOT NULL,
+ 
+created_at timestamp with time zone DEFAULT now(), updated_at timestamp with time zone DEFAULT now(), deleted_at timestamp with time zone,
+CONSTRAINT stripe_subscriptions_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.subscription_limits ( plan_id text NOT NULL,
+patient_limit integer NOT NULL DEFAULT 1,
+document_limit integer NOT NULL DEFAULT 5, ai_requests_monthly integer NOT NULL DEFAULT 5, storage_limit_mb integer NOT NULL DEFAULT 10, updated_at timestamp with time zone DEFAULT now(),
+CONSTRAINT subscription_limits_pkey PRIMARY KEY (plan_id)
+);
+CREATE TABLE public.symptoms (
+id uuid NOT NULL DEFAULT gen_random_uuid(), profile_id uuid NOT NULL,
+description text NOT NULL, start_date date NOT NULL, end_date date,
+severity USER-DEFINED NOT NULL,
+notes text,
+created_at timestamp with time zone NOT NULL DEFAULT now(), updated_at timestamp with time zone NOT NULL DEFAULT now(), CONSTRAINT symptoms_pkey PRIMARY KEY (id),
+CONSTRAINT symptoms_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.patients(id)
+);
+CREATE TABLE public.user_sessions (
+id uuid NOT NULL DEFAULT gen_random_uuid(), user_id uuid NOT NULL,
+login_time timestamp with time zone NOT NULL DEFAULT now(),
+ 
+logout_time timestamp with time zone,
+session_length_minutes integer NOT NULL DEFAULT 30, ip_address text,
+user_agent text,
+is_active boolean NOT NULL DEFAULT true,
+created_at timestamp with time zone NOT NULL DEFAULT now(), CONSTRAINT user_sessions_pkey PRIMARY KEY (id),
+CONSTRAINT user_sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id));
+

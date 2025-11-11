@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User } from '@supabase/supabase-js';
-import { 
-  User as UserIcon, 
-  Camera, 
-  Globe, 
-  Clock, 
-  CreditCard, 
-  Lock, 
+import {
+  User as UserIcon,
+  Camera,
+  Globe,
+  Clock,
+  CreditCard,
+  Lock,
   AlertCircle,
   Check,
   Trash,
@@ -18,7 +18,8 @@ import {
   History,
   HelpCircle,
   Users,
-  Clock3
+  Clock3,
+  FileText
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import Layout from '../components/Layout';
