@@ -67,15 +67,19 @@ export default function AddSymptom() {
       }
 
       // Prepare symptom data
+      // Combine all details into description and notes
+      let fullDescription = symptomName.trim();
+      if (location.trim()) fullDescription += ` (${location.trim()})`;
+      if (duration.trim()) fullDescription += ` - Duration: ${duration.trim()}`;
+
       const symptom = {
         user_id: user.id,
-        patient_id: patientId,
-        name: symptomName.trim(),
+        profile_id: patientId,
+        description: fullDescription,
+        start_date: new Date().toISOString().split('T')[0],
         severity,
-        description: description.trim() || null,
-        location: location.trim() || null,
-        duration: duration.trim() || null,
-        recorded_at: new Date().toISOString(),
+        notes: description.trim() || null,
+        created_at: new Date().toISOString(),
       };
 
       // Insert symptom

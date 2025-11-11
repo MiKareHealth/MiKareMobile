@@ -63,18 +63,21 @@ export default function AddMedication() {
       }
 
       // Prepare medication data
+      // Combine purpose and frequency into notes
+      let medicationNotes = notes.trim();
+      if (purpose.trim()) medicationNotes = `Purpose: ${purpose.trim()}\n${medicationNotes}`;
+      if (frequency) medicationNotes = `Frequency: ${frequency}\n${medicationNotes}`;
+
       const medication = {
         user_id: user.id,
-        patient_id: patientId,
-        name: medicationName.trim(),
+        profile_id: patientId,
+        medication_name: medicationName.trim(),
         dosage: dosage.trim(),
-        frequency,
         start_date: startDate || new Date().toISOString().split('T')[0],
         end_date: endDate || null,
+        status: 'active',
         prescribed_by: prescribedBy.trim() || null,
-        purpose: purpose.trim() || null,
-        notes: notes.trim() || null,
-        is_active: true,
+        notes: medicationNotes.trim() || null,
         created_at: new Date().toISOString(),
       };
 

@@ -101,11 +101,13 @@ export default function AddDiaryEntry() {
       // Prepare diary entry data
       const diaryEntry = {
         user_id: user.id,
-        patient_id: patientId,
+        profile_id: patientId,
+        entry_type: 'diary',
         title: title.trim() || null,
-        content: content.trim(),
+        date: new Date().toISOString().split('T')[0],
+        notes: content.trim(),
         mood: selectedMood,
-        symptoms: symptoms.trim() || null,
+        severity: symptoms.trim() || null,
         created_at: new Date().toISOString(),
       };
 

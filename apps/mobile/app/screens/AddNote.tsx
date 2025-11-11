@@ -58,24 +58,26 @@ export default function AddNote() {
         .map((tag) => tag.trim())
         .filter((tag) => tag.length > 0);
 
+      // Combine content, category, and tags into notes field
+      let noteContent = content.trim();
+      if (category) noteContent = `[${category.toUpperCase()}]\n${noteContent}`;
+      if (tagsArray.length > 0) noteContent += `\n\nTags: ${tagsArray.join(', ')}`;
+
       // Prepare note data
       const note = {
         user_id: user.id,
-        patient_id: patientId,
+        profile_id: patientId,
+        entry_type: 'note',
         title: title.trim() || null,
-        content: content.trim(),
-        category,
-        tags: tagsArray.length > 0 ? tagsArray : null,
+        date: new Date().toISOString().split('T')[0],
+        notes: noteContent,
         created_at: new Date().toISOString(),
       };
 
-      // Insert note (assuming we have a notes table or using diary_entries with a type flag)
+      // Insert note into diary_entries
       const { error: insertError } = await supabase
         .from('diary_entries')
-        .insert([{
-          ...note,
-          entry_type: 'note',
-        }]);
+        .insert([note]);
 
       if (insertError) throw insertError;
 

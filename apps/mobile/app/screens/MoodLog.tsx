@@ -19,7 +19,7 @@ export default function MoodLog() {
     // Save mood as a diary entry
     await supabase.from('diary_entries').insert([{
       user_id: user.id,
-      patient_id: patientId,
+      profile_id: patientId,
       entry_type: 'mood',
       mood,
       notes,

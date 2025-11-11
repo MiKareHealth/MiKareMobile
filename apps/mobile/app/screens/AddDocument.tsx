@@ -140,7 +140,7 @@ export default function AddDocument() {
       // Prepare document data
       const document = {
         user_id: user.id,
-        patient_id: patientId,
+        profile_id: patientId,
         title: title.trim(),
         document_type: documentType,
         description: description.trim() || null,
