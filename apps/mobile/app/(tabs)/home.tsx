@@ -100,12 +100,33 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
-  const handleQuickAction = (action: string) => {
-    Alert.alert('Quick Action', `${action} functionality coming soon!`);
-  };
+  const showProfilePicker = (actionRoute: string, actionTitle: string) => {
+    if (patients.length === 0) {
+      Alert.alert('No Profiles', 'Please add a profile first from the Profiles tab.');
+      return;
+    }
 
-  const handleLogMood = () => {
-    Alert.alert('Log Mood', 'Mood logging functionality coming soon!');
+    if (patients.length === 1) {
+      // If only one profile, go directly
+      router.push(`${actionRoute}?patientId=${patients[0].id}` as any);
+      return;
+    }
+
+    // Show profile picker for multiple profiles
+    Alert.alert(
+      actionTitle,
+      'Select a profile:',
+      [
+        ...patients.map((patient) => ({
+          text: patient.full_name,
+          onPress: () => router.push(`${actionRoute}?patientId=${patient.id}` as any),
+        })),
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ]
+    );
   };
 
   const getDisplayName = () => {
@@ -175,88 +196,77 @@ export default function HomeScreen() {
 
           {/* Quick Access Grid */}
           <View style={styles.quickAccessSection}>
-            {/* Row 1: At the doctor? */}
-            <Text style={styles.sectionTitle}>At the doctor?</Text>
+            <Text style={styles.sectionTitle}>Quick Entry</Text>
+
+            {/* Row 1 */}
             <View style={styles.gridRow}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.gridTile}
-                onPress={() => handleQuickAction('Record')}
+                onPress={() => showProfilePicker('/screens/AddSymptom', 'Add Symptom')}
               >
-                                 <View style={styles.tileIcon}>
-                   <IconSymbol name="mic.fill" size={22} color="#FFFFFF" />
-                 </View>
-                <Text style={styles.tileText}>Record</Text>
+                <View style={styles.tileIcon}>
+                  <IconSymbol name="thermometer" size={22} color="#FFFFFF" />
+                </View>
+                <Text style={styles.tileText}>Add Symptom</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={styles.gridTile}
-                onPress={() => handleQuickAction('Stethoscope')}
+                onPress={() => showProfilePicker('/screens/AddMedication', 'Add Medication')}
               >
-                                 <View style={styles.tileIcon}>
-                   <IconSymbol name="stethoscope" size={28} color="#FFFFFF" />
-                 </View>
-                <Text style={styles.tileText}>At the doctor?</Text>
+                <View style={styles.tileIcon}>
+                  <IconSymbol name="pills" size={26} color="#FFFFFF" />
+                </View>
+                <Text style={styles.tileText}>Add Medication</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Row 2: Quick Entry Grid */}
-            <Text style={styles.sectionTitle}>Quick Entry</Text>
+            {/* Row 2 */}
             <View style={styles.gridRow}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.gridTile}
-                onPress={() => handleQuickAction('Add Symptom')}
+                onPress={() => showProfilePicker('/screens/AddDocument', 'Scan Document')}
               >
-                                 <View style={styles.tileIcon}>
-                   <IconSymbol name="thermometer" size={22} color="#FFFFFF" />
-                 </View>
-                <Text style={styles.tileText}>Add Symptom</Text>
+                <View style={styles.tileIcon}>
+                  <IconSymbol name="camera.fill" size={22} color="#FFFFFF" />
+                </View>
+                <Text style={styles.tileText}>Scan Document</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={styles.gridTile}
-                onPress={() => handleQuickAction('Add Medication')}
+                onPress={() => showProfilePicker('/screens/AddNote', 'Add Note')}
               >
-                                 <View style={styles.tileIcon}>
-                   <IconSymbol name="pills" size={26} color="#FFFFFF" />
-                 </View>
-                <Text style={styles.tileText}>Add Medication</Text>
+                <View style={styles.tileIcon}>
+                  <IconSymbol name="note.text" size={22} color="#FFFFFF" />
+                </View>
+                <Text style={styles.tileText}>Add Note</Text>
               </TouchableOpacity>
             </View>
 
             {/* Row 3 */}
             <View style={styles.gridRow}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.gridTile}
-                onPress={() => handleQuickAction('Scan Document')}
+                onPress={() => showProfilePicker('/screens/AddDiaryEntry', 'Add Diary Entry')}
               >
-                                 <View style={styles.tileIcon}>
-                   <IconSymbol name="camera.fill" size={22} color="#FFFFFF" />
-                 </View>
-                <Text style={styles.tileText}>Scan Document</Text>
+                <View style={styles.tileIcon}>
+                  <IconSymbol name="book.fill" size={22} color="#FFFFFF" />
+                </View>
+                <Text style={styles.tileText}>Add Diary Entry</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={styles.gridTile}
-                onPress={() => handleQuickAction('Add Note')}
+                onPress={() => showProfilePicker('/screens/MoodLog', 'Log Mood')}
               >
-                                 <View style={styles.tileIcon}>
-                   <IconSymbol name="note.text" size={22} color="#FFFFFF" />
-                 </View>
-                <Text style={styles.tileText}>Add Note</Text>
+                <View style={styles.tileIcon}>
+                  <IconSymbol name="heart.fill" size={22} color="#FFFFFF" />
+                </View>
+                <Text style={styles.tileText}>Log Mood</Text>
               </TouchableOpacity>
             </View>
           </View>
-
-          {/* Mood Logging Button */}
-          <TouchableOpacity 
-            style={styles.moodButton}
-            onPress={handleLogMood}
-          >
-            <View style={styles.moodButtonContent}>
-              <IconSymbol name="heart.fill" size={24} color="#FFFFFF" />
-              <Text style={styles.moodButtonText}>Log Mood</Text>
-            </View>
-          </TouchableOpacity>
         </Animated.View>
       </ScrollView>
     </SafeAreaView>
@@ -390,30 +400,5 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#374151',
     textAlign: 'center',
-  },
-  moodButton: {
-    backgroundColor: '#008080',
-    borderRadius: 12,
-    padding: 18,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 5,
-  },
-  moodButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  moodButtonText: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginLeft: 12,
   },
 });
