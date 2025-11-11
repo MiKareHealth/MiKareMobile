@@ -14,8 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
-import { IconSymbol } from '../../../components/ui/IconSymbol';
-import { getSupabaseClient } from '../../../src/lib/supabaseClient';
+import { IconSymbol } from '../../components/ui/IconSymbol';
+import { getSupabaseClient } from '../../src/lib/supabaseClient';
 
 const DOCUMENT_TYPES = [
   { label: 'Lab Report', value: 'lab_report', icon: 'doc.text.fill' },

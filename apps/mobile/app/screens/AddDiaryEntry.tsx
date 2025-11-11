@@ -13,8 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { IconSymbol } from '../../../components/ui/IconSymbol';
-import { getSupabaseClient } from '../../../src/lib/supabaseClient';
+import { IconSymbol } from '../../components/ui/IconSymbol';
+import { getSupabaseClient } from '../../src/lib/supabaseClient';
 
 const MOODS = [
   { emoji: '😊', label: 'Great', value: 'great' },

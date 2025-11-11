@@ -11,8 +11,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { IconSymbol } from '../../../components/ui/IconSymbol';
-import { getSupabaseClient } from '../../../src/lib/supabaseClient';
+import { IconSymbol } from '../../components/ui/IconSymbol';
+import { getSupabaseClient } from '../../src/lib/supabaseClient';
 
 const FREQUENCY_OPTIONS = [
   { label: 'Once Daily', value: 'once_daily' },

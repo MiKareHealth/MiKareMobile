@@ -11,8 +11,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { IconSymbol } from '../../../components/ui/IconSymbol';
-import { getSupabaseClient } from '../../../src/lib/supabaseClient';
+import { IconSymbol } from '../../components/ui/IconSymbol';
+import { getSupabaseClient } from '../../src/lib/supabaseClient';
 
 const NOTE_CATEGORIES = [
   { label: 'General', value: 'general', icon: 'note.text' },
