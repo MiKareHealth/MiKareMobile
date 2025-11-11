@@ -74,7 +74,7 @@ export default function AddMedication() {
         dosage: dosage.trim(),
         start_date: startDate || new Date().toISOString().split('T')[0],
         end_date: endDate || null,
-        status: 'active',
+        status: 'Active',
         prescribed_by: prescribedBy.trim() || null,
         notes: medicationNotes.trim() || null,
         created_at: new Date().toISOString(),

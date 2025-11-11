@@ -15,9 +15,9 @@ import { IconSymbol } from '../../components/ui/IconSymbol';
 import { getSupabaseClient } from '../../src/lib/supabaseClient';
 
 const SEVERITY_LEVELS = [
-  { label: 'Mild', value: 'mild', color: '#10B981' },
-  { label: 'Moderate', value: 'moderate', color: '#F59E0B' },
-  { label: 'Severe', value: 'severe', color: '#EF4444' },
+  { label: 'Mild', value: 'Mild', color: '#10B981' },
+  { label: 'Moderate', value: 'Moderate', color: '#F59E0B' },
+  { label: 'Severe', value: 'Severe', color: '#EF4444' },
 ];
 
 const COMMON_SYMPTOMS = [
@@ -36,7 +36,7 @@ export default function AddSymptom() {
   const { patientId } = useLocalSearchParams<{ patientId: string }>();
 
   const [symptomName, setSymptomName] = useState('');
-  const [severity, setSeverity] = useState<string>('moderate');
+  const [severity, setSeverity] = useState<string>('Moderate');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
   const [duration, setDuration] = useState('');

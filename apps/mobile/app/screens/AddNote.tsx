@@ -66,7 +66,7 @@ export default function AddNote() {
       // Prepare note data
       const note = {
         profile_id: patientId,
-        entry_type: 'note',
+        entry_type: 'Note',
         title: title.trim() || 'Note', // title is NOT NULL in schema
         date: new Date().toISOString().split('T')[0],
         notes: noteContent,
