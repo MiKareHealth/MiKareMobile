@@ -99,14 +99,19 @@ export default function AddDiaryEntry() {
       }
 
       // Prepare diary entry data
+      // Combine mood into notes if selected
+      let notesContent = content.trim();
+      if (selectedMood) {
+        notesContent = `Mood: ${selectedMood}\n\n${notesContent}`;
+      }
+
       const diaryEntry = {
         user_id: user.id,
         profile_id: patientId,
         entry_type: 'diary',
         title: title.trim() || null,
         date: new Date().toISOString().split('T')[0],
-        notes: content.trim(),
-        mood: selectedMood,
+        notes: notesContent,
         severity: symptoms.trim() || null,
         created_at: new Date().toISOString(),
       };

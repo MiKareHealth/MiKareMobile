@@ -16,13 +16,15 @@ export default function MoodLog() {
 
     if (!user) throw new Error('Not authenticated');
 
+    // Combine mood and notes
+    const moodNotes = notes ? `Mood: ${mood}\n\n${notes}` : `Mood: ${mood}`;
+
     // Save mood as a diary entry
     await supabase.from('diary_entries').insert([{
       user_id: user.id,
       profile_id: patientId,
       entry_type: 'mood',
-      mood,
-      notes,
+      notes: moodNotes,
       date: new Date().toISOString().split('T')[0],
       created_at: new Date().toISOString(),
     }]);
