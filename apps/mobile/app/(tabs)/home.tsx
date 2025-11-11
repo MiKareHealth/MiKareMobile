@@ -8,6 +8,7 @@ import {
   RefreshControl,
   Alert,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/contexts/AuthContext';
@@ -15,6 +16,9 @@ import { usePatients } from '../../src/hooks/usePatients';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { IconSymbol } from '../../components/ui/IconSymbol';
 import { getTimeAwareGreeting } from '../../src/utils/timeUtils';
+import { useQuery } from '@tanstack/react-query';
+import { getSupabaseClient } from '../../src/lib/supabaseClient';
+import { Card } from '../../src/components/ui/Card';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -23,6 +27,64 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
   const totalPatients = patients.length;
+
+  // Fetch activity stats
+  const { data: stats, isLoading: statsLoading } = useQuery({
+    queryKey: ['homeStats', patients.map(p => p.id)],
+    queryFn: async () => {
+      const supabase = await getSupabaseClient();
+      const profileIds = patients.map(p => p.id);
+
+      if (profileIds.length === 0) {
+        return { entriesThisWeek: 0, lastEntryDate: null, upcomingCount: 0 };
+      }
+
+      // Get week start (7 days ago)
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const weekAgoStr = weekAgo.toISOString().split('T')[0];
+
+      // Count diary entries this week
+      const { count: diaryCount } = await supabase
+        .from('diary_entries')
+        .select('*', { count: 'exact', head: true })
+        .in('profile_id', profileIds)
+        .gte('date', weekAgoStr);
+
+      // Count symptoms this week
+      const { count: symptomCount } = await supabase
+        .from('symptoms')
+        .select('*', { count: 'exact', head: true })
+        .in('profile_id', profileIds)
+        .gte('start_date', weekAgoStr);
+
+      // Get last diary entry date
+      const { data: lastEntry } = await supabase
+        .from('diary_entries')
+        .select('date')
+        .in('profile_id', profileIds)
+        .order('date', { ascending: false })
+        .limit(1)
+        .single();
+
+      // Count upcoming appointments (diary entries with Appointment type in the future)
+      const today = new Date().toISOString().split('T')[0];
+      const { count: appointmentCount } = await supabase
+        .from('diary_entries')
+        .select('*', { count: 'exact', head: true })
+        .in('profile_id', profileIds)
+        .eq('entry_type', 'Appointment')
+        .gte('date', today);
+
+      return {
+        entriesThisWeek: (diaryCount || 0) + (symptomCount || 0),
+        lastEntryDate: lastEntry?.date || null,
+        upcomingCount: appointmentCount || 0,
+      };
+    },
+    enabled: !isLoading && patients.length > 0,
+    staleTime: 1000 * 60 * 5,
+  });
 
   useEffect(() => {
     // Fade up animation on load
@@ -72,6 +134,27 @@ export default function HomeScreen() {
     return user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
   };
 
+  const formatLastEntryDate = (dateStr: string | null) => {
+    if (!dateStr) return 'No entries yet';
+
+    const date = new Date(dateStr);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const dateOnly = date.toISOString().split('T')[0];
+    const todayOnly = today.toISOString().split('T')[0];
+    const yesterdayOnly = yesterday.toISOString().split('T')[0];
+
+    if (dateOnly === todayOnly) return 'Today';
+    if (dateOnly === yesterdayOnly) return 'Yesterday';
+
+    const daysAgo = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysAgo < 7) return `${daysAgo} days ago`;
+
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
   return (
     <SafeAreaView style={styles.container}>
              <ScrollView
@@ -98,6 +181,51 @@ export default function HomeScreen() {
               </Text>
             )}
           </View>
+
+          {/* Stats Card */}
+          {totalPatients > 0 && (
+            <Card style={styles.statsCard}>
+              {statsLoading ? (
+                <View style={styles.statsLoading}>
+                  <ActivityIndicator size="small" color="#008080" />
+                </View>
+              ) : (
+                <View style={styles.statsGrid}>
+                  <View style={styles.statItem}>
+                    <View style={[styles.statIconContainer, { backgroundColor: '#E0F2F1' }]}>
+                      <IconSymbol name="chart.bar.fill" size={20} color="#008080" />
+                    </View>
+                    <Text style={styles.statValue}>{stats?.entriesThisWeek || 0}</Text>
+                    <Text style={styles.statLabel}>This Week</Text>
+                  </View>
+
+                  <View style={styles.statDivider} />
+
+                  <View style={styles.statItem}>
+                    <View style={[styles.statIconContainer, { backgroundColor: '#FEF3C7' }]}>
+                      <IconSymbol name="calendar" size={20} color="#D97706" />
+                    </View>
+                    <Text style={styles.statValue}>
+                      {stats?.upcomingCount || 0}
+                    </Text>
+                    <Text style={styles.statLabel}>Upcoming</Text>
+                  </View>
+
+                  <View style={styles.statDivider} />
+
+                  <View style={styles.statItem}>
+                    <View style={[styles.statIconContainer, { backgroundColor: '#DBEAFE' }]}>
+                      <IconSymbol name="clock.fill" size={20} color="#2563EB" />
+                    </View>
+                    <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>
+                      {formatLastEntryDate(stats?.lastEntryDate || null)}
+                    </Text>
+                    <Text style={styles.statLabel}>Last Entry</Text>
+                  </View>
+                </View>
+              )}
+            </Card>
+          )}
 
           {/* Quick Access Grid */}
           <View style={styles.quickAccessSection}>
@@ -205,6 +333,59 @@ const styles = StyleSheet.create({
     color: '#E0F2F1',
     textAlign: 'center',
     fontWeight: '500',
+  },
+  statsCard: {
+    marginBottom: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  statsLoading: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  statDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: '#E5E7EB',
+    marginHorizontal: 8,
   },
   quickAccessSection: {
     marginBottom: 20,
