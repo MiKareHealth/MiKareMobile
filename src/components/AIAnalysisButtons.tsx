@@ -104,7 +104,7 @@ export default function AIAnalysisButtons({
           break;
         case 'questions':
           title = 'Suggested Questions for Next Visit';
-          prompt = 'Based on the symptoms, diary entries, and patient information, suggest important questions to ask during the next medical visit. Consider the patient\'s background, family history, allergies, and cultural factors when formulating questions. Prioritize questions based on severity and recency of symptoms.';
+          prompt = 'Based on the symptoms, diary entries, and patient information, generate questions that the PATIENT should ask their doctor during the next medical visit. Write the questions in FIRST PERSON from the patient\'s perspective (using "I", "my", "me"). For example: "Given my recent symptoms of X, what tests should I consider?" or "What could be causing my episodes of Y?" DO NOT write questions as if you are the doctor asking the patient. DO NOT use "you/your" to address the patient. The patient will use these questions to advocate for themselves with their healthcare provider. Consider the patient\'s background, family history, allergies, and cultural factors. Prioritize questions based on severity and recency of symptoms.';
           break;
         case 'terminology':
           title = 'Medical Terminology Explanation';
