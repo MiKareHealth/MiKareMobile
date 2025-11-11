@@ -8,18 +8,13 @@ import {
   RefreshControl,
   Alert,
   Animated,
-  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/contexts/AuthContext';
-import { usePatients, type Patient } from '../../src/hooks/usePatients';
-import { useMoodTracking } from '../../src/hooks/useMoodTracking';
-import { Card } from '../../src/components/ui/Card';
+import { usePatients } from '../../src/hooks/usePatients';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { IconSymbol } from '../../components/ui/IconSymbol';
 import { getTimeAwareGreeting } from '../../src/utils/timeUtils';
-import { useQuery } from '@tanstack/react-query';
-import { getSupabaseClient } from '../../src/lib/supabaseClient';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -27,63 +22,7 @@ export default function HomeScreen() {
   const { patients, isLoading, refetch } = usePatients();
   const [refreshing, setRefreshing] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
-
-  // Direct mood tracking query
-  const { data: moodData, isLoading: moodLoading, error: moodError } = useQuery({
-    queryKey: ['homeMoodTracking', patients.length],
-    queryFn: async () => {
-      const supabase = await getSupabaseClient();
-      
-      // Get today's date in YYYY-MM-DD format
-      const today = new Date().toISOString().split('T')[0];
-      
-      const totalPatients = patients.length;
-      
-      console.log('Home Screen Debug - Total patients:', totalPatients);
-      
-      if (totalPatients === 0) {
-        return {
-          totalPatients: 0,
-          patientsWithMoodToday: 0,
-        };
-      }
-      
-             // Get patients with mood entries for today (no user_id filter for demo data)
-       const { data: moodEntries, error: moodError } = await supabase
-         .from('mood_entries')
-         .select('profile_id')
-         .gte('created_at', `${today}T00:00:00`)
-         .lt('created_at', `${today}T23:59:59`);
-       
-       if (moodError) {
-         throw moodError;
-       }
-       
-       // Count unique patients with mood entries today
-       const uniquePatientsWithMood = new Set(moodEntries?.map((entry: any) => entry.profile_id)).size;
-      
-      console.log('Home Screen Debug - Patients with mood today:', uniquePatientsWithMood);
-      console.log('Home Screen Debug - Mood entries found:', moodEntries?.length || 0);
-      
-      return {
-        totalPatients,
-        patientsWithMoodToday: uniquePatientsWithMood,
-      };
-    },
-    enabled: !isLoading && patients.length > 0, // Only run when patients are loaded
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchInterval: 1000 * 60 * 2, // Refetch every 2 minutes
-  });
-
-  const totalPatients = moodData?.totalPatients || 0;
-  const patientsWithMoodToday = moodData?.patientsWithMoodToday || 0;
-
-  // Additional debugging
-  console.log('Home Screen Debug - Patients array length:', patients.length);
-  console.log('Home Screen Debug - Mood loading:', moodLoading);
-  console.log('Home Screen Debug - Mood error:', moodError);
-  console.log('Home Screen Debug - Final totalPatients:', totalPatients);
-  console.log('Home Screen Debug - Final patientsWithMoodToday:', patientsWithMoodToday);
+  const totalPatients = patients.length;
 
   useEffect(() => {
     // Fade up animation on load
@@ -133,13 +72,6 @@ export default function HomeScreen() {
     return user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
   };
 
-  const isAllMoodsLogged = totalPatients > 0 && patientsWithMoodToday === totalPatients;
-  
-  // Debug logging
-  console.log('Home Screen Debug - Total patients:', totalPatients);
-  console.log('Home Screen Debug - Patients with mood today:', patientsWithMoodToday);
-  console.log('Home Screen Debug - Is all moods logged:', isAllMoodsLogged);
-
   return (
     <SafeAreaView style={styles.container}>
              <ScrollView
@@ -160,39 +92,12 @@ export default function HomeScreen() {
             <Text style={styles.greetingText}>
               {getTimeAwareGreeting(getDisplayName())}
             </Text>
+            {totalPatients > 0 && (
+              <Text style={styles.greetingSubtext}>
+                Managing {totalPatients} {totalPatients === 1 ? 'profile' : 'profiles'}
+              </Text>
+            )}
           </View>
-
-          {/* Today's To-Do List */}
-          <Card style={styles.todoCard}>
-            <Text style={styles.todoTitle}>Today's To-Do</Text>
-            <View style={styles.todoItem}>
-              <View style={styles.todoItemLeft}>
-                <IconSymbol name="heart.fill" size={20} color="#008080" />
-                <Text style={styles.todoItemText}>Mood logged for all profiles</Text>
-              </View>
-              <View style={styles.todoStatus}>
-                {moodLoading ? (
-                  <ActivityIndicator size="small" color="#008080" />
-                ) : (
-                  <>
-                    <Text style={styles.todoStatusText}>
-                      {patientsWithMoodToday}/{totalPatients}
-                    </Text>
-                    {isAllMoodsLogged ? (
-                      <View style={styles.completedStatus}>
-                        <IconSymbol name="checkmark.circle.fill" size={20} color="#008080" />
-                      </View>
-                    ) : (
-                      <View style={[
-                        styles.todoStatusDot,
-                        { backgroundColor: '#F59E0B' }
-                      ]} />
-                    )}
-                  </>
-                )}
-              </View>
-            </View>
-          </Card>
 
           {/* Quick Access Grid */}
           <View style={styles.quickAccessSection}>
@@ -286,65 +191,20 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   greetingSection: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   greetingText: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#FFFFFF',
     textAlign: 'center',
+    marginBottom: 8,
   },
-  todoCard: {
-    marginBottom: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  todoTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 10,
-  },
-  todoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  todoItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  todoItemText: {
+  greetingSubtext: {
     fontSize: 15,
-    color: '#374151',
-    marginLeft: 10,
-  },
-  todoStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  todoStatusText: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginRight: 8,
-  },
-  todoStatusDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-  },
-  completedStatus: {
-    marginLeft: 8,
+    color: '#E0F2F1',
+    textAlign: 'center',
+    fontWeight: '500',
   },
   quickAccessSection: {
     marginBottom: 20,
@@ -358,47 +218,47 @@ const styles = StyleSheet.create({
   },
   gridRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 10,
+    gap: 12,
+    marginBottom: 12,
   },
   gridTile: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 18,
+    borderRadius: 16,
+    padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 85,
-    shadowColor: '#000',
+    minHeight: 100,
+    shadowColor: '#008080',
     shadowOffset: {
       width: 0,
-      height: 3,
+      height: 4,
     },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 5,
   },
   tileIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#008080',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   tileText: {
     fontSize: 13,
-    fontWeight: '500',
-    color: '#374151',
+    fontWeight: '600',
+    color: '#1F2937',
     textAlign: 'center',
   },
 });
