@@ -106,14 +106,14 @@ export default function AddDiaryEntry() {
       }
 
       const diaryEntry = {
-        user_id: user.id,
         profile_id: patientId,
         entry_type: 'diary',
-        title: title.trim() || null,
+        title: title.trim() || 'Diary Entry', // title is NOT NULL in schema
         date: new Date().toISOString().split('T')[0],
         notes: notesContent,
         severity: symptoms.trim() || null,
         created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
 
       // Insert diary entry

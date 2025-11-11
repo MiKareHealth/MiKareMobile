@@ -137,22 +137,23 @@ export default function AddDocument() {
       // This is a placeholder - actual implementation would upload each file
       // and get back URLs to store in the database
 
-      // Prepare document data
-      const document = {
-        user_id: user.id,
-        profile_id: patientId,
-        title: title.trim(),
-        document_type: documentType,
-        description: description.trim() || null,
-        document_date: documentDate || new Date().toISOString().split('T')[0],
-        file_urls: selectedFiles.map((f) => f.uri), // This would be replaced with actual storage URLs
-        created_at: new Date().toISOString(),
-      };
+      // Insert each file as a separate patient_document record
+      // Note: patient_documents table uses patient_id not profile_id
+      const documents = selectedFiles.map((file) => ({
+        patient_id: patientId,
+        file_name: file.name || 'document.pdf',
+        file_type: file.type || 'application/pdf',
+        file_size: 0, // Would be set when actually uploading
+        file_url: file.uri, // This would be replaced with actual storage URL after upload
+        description: `${title.trim()}: ${description.trim() || ''}`.trim(),
+        uploaded_by: user.id,
+        uploaded_at: new Date().toISOString(),
+      }));
 
-      // Insert document record
+      // Insert document records
       const { error: insertError } = await supabase
-        .from('documents')
-        .insert([document]);
+        .from('patient_documents')
+        .insert(documents);
 
       if (insertError) throw insertError;
 

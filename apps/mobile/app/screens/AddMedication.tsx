@@ -69,7 +69,6 @@ export default function AddMedication() {
       if (frequency) medicationNotes = `Frequency: ${frequency}\n${medicationNotes}`;
 
       const medication = {
-        user_id: user.id,
         profile_id: patientId,
         medication_name: medicationName.trim(),
         dosage: dosage.trim(),
@@ -79,6 +78,7 @@ export default function AddMedication() {
         prescribed_by: prescribedBy.trim() || null,
         notes: medicationNotes.trim() || null,
         created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
 
       // Insert medication

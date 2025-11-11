@@ -65,13 +65,13 @@ export default function AddNote() {
 
       // Prepare note data
       const note = {
-        user_id: user.id,
         profile_id: patientId,
         entry_type: 'note',
-        title: title.trim() || null,
+        title: title.trim() || 'Note', // title is NOT NULL in schema
         date: new Date().toISOString().split('T')[0],
         notes: noteContent,
         created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
 
       // Insert note into diary_entries

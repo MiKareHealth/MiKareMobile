@@ -73,13 +73,13 @@ export default function AddSymptom() {
       if (duration.trim()) fullDescription += ` - Duration: ${duration.trim()}`;
 
       const symptom = {
-        user_id: user.id,
         profile_id: patientId,
         description: fullDescription,
         start_date: new Date().toISOString().split('T')[0],
         severity,
         notes: description.trim() || null,
         created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
 
       // Insert symptom

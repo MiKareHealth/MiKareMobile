@@ -21,12 +21,13 @@ export default function MoodLog() {
 
     // Save mood as a diary entry
     await supabase.from('diary_entries').insert([{
-      user_id: user.id,
       profile_id: patientId,
       entry_type: 'mood',
+      title: `Mood: ${mood}`, // title is NOT NULL in schema
       notes: moodNotes,
       date: new Date().toISOString().split('T')[0],
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     }]);
   };
 
