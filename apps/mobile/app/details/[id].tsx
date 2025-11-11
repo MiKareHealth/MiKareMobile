@@ -92,15 +92,15 @@ const AI_ANALYSIS_TYPES = [
     color: '#2563EB', // blue
   },
   {
-    type: 'summary',
-    title: 'Health Summary',
-    icon: 'description',
+    type: 'terminology',
+    title: 'Explain Terms',
+    icon: 'article',
     color: '#059669', // green
   },
   {
-    type: 'recommendations',
-    title: 'Recommendations',
-    icon: 'lightbulb',
+    type: 'trends',
+    title: 'Health Summary',
+    icon: 'description',
     color: '#D97706', // orange
   },
 ];
